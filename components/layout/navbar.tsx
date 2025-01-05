@@ -2,19 +2,35 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Phone, LogIn } from "lucide-react";
+import { Phone, LogIn, ChevronDown } from "lucide-react";
 import Link from "next/link";
+import { auth } from "@/firebase/config";
+import { onAuthStateChanged, signOut, User } from "firebase/auth";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
     };
     window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+    });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      unsubscribe();
+    };
   }, []);
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+  };
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -29,6 +45,11 @@ export function Navbar() {
           </div>
 
           <div className="flex-1 hidden md:flex items-center justify-center gap-8">
+          {user && (
+              <Link href="/dashboard" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
+                Dashboard
+              </Link>
+            )}
             <Link href="#features" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
               Features
             </Link>
@@ -45,13 +66,37 @@ export function Navbar() {
               <Phone className="mr-2 h-4 w-4" />
               Contact
             </Button>
-            <Button 
-              size="sm"
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white border-0"
-            >
-              <LogIn className="mr-2 h-4 w-4" />
-              Login
-            </Button>
+            {user ? (
+              <div className="relative">
+                <button 
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className={`bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white border-0 flex items-center rounded-lg py-2 px-4 ${dropdownOpen?'rounded-b-none':''}`}
+                >
+                  {user.displayName}
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </button>
+                {dropdownOpen && (
+                  <div className="absolute right-0 border shadow-lg w-full py-1 bg-gradient-to-r rounded-b-sm font-bold">
+                    <button
+                      onClick={handleSignOut}
+                      className="block w-full px-2 py-2 text-sm text-center text-gray-200 hover:text-white"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link href="/auth">
+                <Button 
+                  size="sm"
+                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white border-0"
+                >
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Login
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </div>
