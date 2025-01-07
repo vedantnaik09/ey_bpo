@@ -341,7 +341,7 @@ export default function DashboardPage() {
 
       <Card className="bg-white dark:bg-gray-800 p-6">
         <div className="flex flex-col md:flex-row gap-8">
-          <div className="flex-1 min-w-[500px]">
+          <div className="flex-1 max-w-xl">
             {" "}
             {/* Added min-width */}
             <h2 className="text-xl font-semibold mb-4">Complaint Calendar</h2>
