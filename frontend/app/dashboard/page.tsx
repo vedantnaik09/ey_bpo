@@ -157,7 +157,7 @@ export default function DashboardPage() {
       // });
       setComplaints((prev) =>
         prev.map((complaint) =>
-          complaint.id === id ? { ...complaint, resolved: true } : complaint
+          complaint.id === id ? { ...complaint, resolved: !complaint.resolved } : complaint
         )
       );
       toast.success("Complaint marked as resolved");
@@ -325,10 +325,22 @@ export default function DashboardPage() {
                         variant="outline"
                         onClick={() => handleResolve(complaint.id)}
                         disabled={loading[complaint.id]}
-                        className="border-green-500 text-green-500 hover:bg-green-50 dark:hover:bg-green-950"
+                        className="border-green-500 text-green-500 hover:bg-green-50 dark:hover:bg-green-950 mr-20"
                       >
                         <CheckCircle className="h-4 w-4 mr-2" />
                         Resolve
+                      </Button>
+                    )}
+                    {complaint.resolved && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleResolve(complaint.id)}
+                        disabled={loading[complaint.id]}
+                        className="border-green-500 text-green-500 hover:bg-green-50 dark:hover:bg-green-950"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Mark as unresolved
                       </Button>
                     )}
                   </div>
