@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
+import Calendar from "@/components/ui/calendar";
 import {
   Table,
   TableBody,
@@ -28,6 +30,7 @@ interface Complaint {
   phone: string;
   subject: string;
   date: string;
+  callScheduled: string | null;
   severity: number;
   priority: "Low" | "Medium" | "High" | "Critical";
   resolved: boolean;
@@ -39,7 +42,8 @@ const baseComplaints: Complaint[] = [
     customerName: "John Doe",
     phone: "+1234567890",
     subject: "Network Connectivity Issues",
-    date: "2024-03-20",
+    date: "20-03-2025",
+    callScheduled: "22-03-2025",
     severity: 0.8,
     priority: "High",
     resolved: false,
@@ -49,7 +53,8 @@ const baseComplaints: Complaint[] = [
     customerName: "Jane Smith",
     phone: "+1234567891",
     subject: "Billing Discrepancy",
-    date: "2024-03-19",
+    date: "19-03-2025",
+    callScheduled: "21-03-2025",
     severity: 0.5,
     priority: "Medium",
     resolved: true,
@@ -59,7 +64,8 @@ const baseComplaints: Complaint[] = [
     customerName: "Robert Johnson",
     phone: "+1234567892",
     subject: "Service Outage",
-    date: "2024-03-20",
+    date: "20-03-2025",
+    callScheduled: null,
     severity: 1.0,
     priority: "Critical",
     resolved: false,
@@ -69,7 +75,8 @@ const baseComplaints: Complaint[] = [
     customerName: "Sarah Williams",
     phone: "+1234567893",
     subject: "Account Access",
-    date: "2024-03-18",
+    date: "18-03-2025",
+    callScheduled: "23-03-2025",
     severity: 0.3,
     priority: "Low",
     resolved: false,
@@ -79,7 +86,8 @@ const baseComplaints: Complaint[] = [
     customerName: "Michael Brown",
     phone: "+1234567894",
     subject: "Product Malfunction",
-    date: "2024-03-17",
+    date: "17-03-2025",
+    callScheduled: "19-03-2025",
     severity: 0.7,
     priority: "High",
     resolved: true,
@@ -110,6 +118,10 @@ const getPriorityColor = (priority: string): string => {
 export default function DashboardPage() {
   const [complaints, setComplaints] = useState<Complaint[]>(baseComplaints);
   const [loading, setLoading] = useState<{ [key: number]: boolean }>({});
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(
+    null
+  );
 
   const totalComplaints = complaints.length;
   const resolvedComplaints = complaints.filter((c) => c.resolved).length;
@@ -120,6 +132,11 @@ export default function DashboardPage() {
     try {
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
+      // TODO: Replace with actual API call
+      // await fetch('/api/call', {
+      //   method: 'POST',
+      //   body: JSON.stringify({ phone })
+      // });
       toast.success("Call initiated successfully");
     } catch (error) {
       toast.error("Failed to initiate call");
@@ -131,7 +148,13 @@ export default function DashboardPage() {
   const handleResolve = async (id: number) => {
     setLoading((prev) => ({ ...prev, [id]: true }));
     try {
+      // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
+      // TODO: Replace with actual API call
+      // await fetch('/api/resolve', {
+      //   method: 'POST',
+      //   body: JSON.stringify({ id })
+      // });
       setComplaints((prev) =>
         prev.map((complaint) =>
           complaint.id === id ? { ...complaint, resolved: true } : complaint
@@ -143,6 +166,55 @@ export default function DashboardPage() {
     } finally {
       setLoading((prev) => ({ ...prev, [id]: false }));
     }
+  };
+
+  const getDayComplaints = (day: Date) => {
+    const formattedDay = format(day, "dd-MM-yyyy");
+    return complaints.filter(
+      (complaint) =>
+        complaint.date === formattedDay ||
+        complaint.callScheduled === formattedDay
+    );
+  };
+
+  const getDateStyle = (day: Date) => {
+    const formattedDay = format(day, "dd-MM-yyyy");
+    const dayComplaints = complaints.filter(
+      (complaint) => complaint.callScheduled === formattedDay
+    );
+
+    if (dayComplaints.length === 0) {
+      const regularComplaints = complaints.filter(
+        (complaint) => complaint.date === formattedDay
+      );
+      return regularComplaints.length > 0
+        ? {
+            backgroundColor: "rgba(99, 102, 241, 0.1)",
+            borderRadius: "0.375rem",
+          }
+        : undefined;
+    }
+
+    const highestSeverity = Math.max(...dayComplaints.map((c) => c.severity));
+
+    if (highestSeverity >= 0.8) {
+      return {
+        backgroundColor: "rgba(239, 68, 68, 0.2)",
+        borderRadius: "0.375rem",
+        fontWeight: "bold",
+      };
+    } else if (highestSeverity >= 0.5) {
+      return {
+        backgroundColor: "rgba(234, 179, 8, 0.2)",
+        borderRadius: "0.375rem",
+        fontWeight: "bold",
+      };
+    }
+    return {
+      backgroundColor: "rgba(34, 197, 94, 0.2)",
+      borderRadius: "0.375rem",
+      fontWeight: "bold",
+    };
   };
 
   return (
@@ -194,19 +266,18 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <Card className="bg-white dark:bg-gray-800">
+      <Card className="bg-white dark:bg-gray-800 mb-8">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Customer</TableHead>
               <TableHead>Subject</TableHead>
               <TableHead>Date</TableHead>
+              <TableHead>Call Scheduled</TableHead>
               <TableHead>Severity</TableHead>
               <TableHead>Priority</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>
-                Actions
-              </TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -217,6 +288,9 @@ export default function DashboardPage() {
                 </TableCell>
                 <TableCell>{complaint.subject}</TableCell>
                 <TableCell>{complaint.date}</TableCell>
+                <TableCell>
+                  {complaint.callScheduled || "Not Scheduled"}
+                </TableCell>
                 <TableCell>
                   <Badge className={getSeverityColor(complaint.severity)}>
                     {(complaint.severity * 100).toFixed(0)}%
@@ -234,13 +308,13 @@ export default function DashboardPage() {
                     <XCircle className="h-5 w-5 text-red-500" />
                   )}
                 </TableCell>
-                <TableCell className="text-center">
-                  <div className="flex gap-2">
+                <TableCell>
+                  <div className="flex justify-end gap-2">
                     <Button
                       size="sm"
                       onClick={() => handleCall(complaint.phone, complaint.id)}
                       disabled={loading[complaint.id]}
-                      className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 justify-end"
+                      className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
                     >
                       <Phone className="h-4 w-4 mr-2" />
                       Call
@@ -257,24 +331,86 @@ export default function DashboardPage() {
                         Resolve
                       </Button>
                     )}
-                    {complaint.resolved && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleResolve(complaint.id)}
-                        disabled={loading[complaint.id]}
-                        className="border-green-500 text-green-500 hover:bg-green-50 dark:hover:bg-green-950"
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Mark as unresolved
-                      </Button>
-                    )}
                   </div>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
+      </Card>
+
+      <Card className="bg-white dark:bg-gray-800 p-6">
+        <div className="flex flex-col md:flex-row gap-8">
+          <div className="flex-1 min-w-[500px]">
+            {" "}
+            {/* Added min-width */}
+            <h2 className="text-xl font-semibold mb-4">Complaint Calendar</h2>
+            <div className="mb-4">
+              <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-red-200"></div>
+                  <span>High Severity Call</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-yellow-200"></div>
+                  <span>Medium Severity Call</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-green-200"></div>
+                  <span>Low Severity Call</span>
+                </div>
+              </div>
+            </div>
+            <Calendar
+              selected={date}
+              onSelect={(newDate) => {
+                setDate(newDate);
+                const complaints = newDate ? getDayComplaints(newDate) : [];
+                setSelectedComplaint(complaints[0] || null);
+              }}
+              className="rounded-md border"
+              complaints={complaints}
+              defaultMonth={new Date(2025, 2)}
+            />
+          </div>
+          <div className="flex-1">
+            <h2 className="text-xl font-semibold mb-4">
+              Selected Date Details
+            </h2>
+            {date && selectedComplaint ? (
+              <div className="space-y-4">
+                <div className="p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <h3 className="font-semibold mb-2 text-lg">
+                    {selectedComplaint.customerName}
+                  </h3>
+                  <p className="text-base text-gray-600 dark:text-gray-400 mb-4">
+                    {selectedComplaint.subject}
+                  </p>
+                  <div className="flex gap-2 mb-4">
+                    <Badge
+                      className={getSeverityColor(selectedComplaint.severity)}
+                    >
+                      Severity: {(selectedComplaint.severity * 100).toFixed(0)}%
+                    </Badge>
+                    <Badge
+                      className={getPriorityColor(selectedComplaint.priority)}
+                    >
+                      {selectedComplaint.priority}
+                    </Badge>
+                  </div>
+                  <p className="text-base">
+                    <strong>Call Scheduled:</strong>{" "}
+                    {selectedComplaint.callScheduled || "Not Scheduled"}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-500 dark:text-gray-400">
+                Select a date to view complaint details
+              </p>
+            )}
+          </div>
+        </div>
       </Card>
     </div>
   );
