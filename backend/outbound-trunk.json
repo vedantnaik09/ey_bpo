@@ -1,0 +1,9 @@
+{
+    "trunk": {
+      "name": "vivek",
+      "address": "TKc0ed684d0849a0adeb7c1cf23a589608.pstn.twilio.com",
+      "numbers": ["+19862163133"],
+      "auth_username": "vivek",
+      "auth_password": "AdminVivek@123"
+    }
+  }
