@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { format, parseISO, add } from "date-fns";
 import { Card } from "@/components/ui/card";
 import Calendar from "@/components/ui/calendar";
+import RescheduleCalendar from "@/components/ui/reschedulecalendar";
 
 import {
   Table,
@@ -89,6 +90,9 @@ export default function DashboardPage() {
   const [selectedComplaint, setSelectedComplaint] = useState<
     Complaint[] | null
   >(null);
+  const [rescheduleComplaintId, setRescheduleComplaintId] = useState<
+    number | null
+  >(null);
 
   useEffect(() => {
     fetchComplaints();
@@ -100,12 +104,20 @@ export default function DashboardPage() {
       setSelectedComplaint(todayComplaints);
     }
   }, [complaints]); // This will run whenever complaints are loaded or updated
-  
+
   // Keep your existing useEffect for fetching complaints
   useEffect(() => {
     fetchComplaints();
   }, []);
-  
+
+  const handleOpenReschedule = (id: number) => {
+    setRescheduleComplaintId(id);
+  };
+
+  const handleCloseReschedule = () => {
+    setRescheduleComplaintId(null);
+  };
+
   const fetchComplaints = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/complaints/`);
@@ -138,9 +150,12 @@ export default function DashboardPage() {
   const toggleResolve = async (id: number) => {
     setLoading((prev) => ({ ...prev, [id]: true }));
     try {
-      const response = await fetch(`${API_BASE_URL}/complaints/${id}/toggleResolve`, {
-        method: "POST",
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/complaints/${id}/toggleResolve`,
+        {
+          method: "POST",
+        }
+      );
       if (response.ok) {
         fetchComplaints();
         toast.success("Complaint marked as resolved");
@@ -285,6 +300,14 @@ export default function DashboardPage() {
                   {complaint.scheduled_callback
                     ? formatToIST(complaint.scheduled_callback)
                     : "Not Scheduled"}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleOpenReschedule(complaint.complaint_id)}
+                    className="ml-2 text-blue-500 hover:bg-background"
+                  >
+                    Reschedule
+                  </Button>
                 </TableCell>
                 <TableCell>
                   <Badge
@@ -313,11 +336,7 @@ export default function DashboardPage() {
                   <div className="flex justify-end gap-2">
                     <Button
                       size="sm"
-                      onClick={() =>
-                        handleCall(
-                          complaint.complaint_id
-                        )
-                      }
+                      onClick={() => handleCall(complaint.complaint_id)}
                       disabled={loading[complaint.complaint_id]}
                       className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
                     >
@@ -346,6 +365,14 @@ export default function DashboardPage() {
         </Table>
       </Card>
 
+      {/* Reschedule Modal */}
+      {rescheduleComplaintId && (
+        <RescheduleCalendar
+          complaintId={rescheduleComplaintId}
+          onClose={handleCloseReschedule}
+          onReschedule={fetchComplaints}
+        />
+      )}
       <Card className="bg-white dark:bg-gray-800 p-6">
         <div className="flex flex-col md:flex-row gap-8">
           <div className="flex flex-col md:flex-row gap-8">
