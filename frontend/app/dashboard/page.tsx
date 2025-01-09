@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
+import { format, parseISO, add } from "date-fns";
 import { Card } from "@/components/ui/card";
 import Calendar from "@/components/ui/calendar";
 
@@ -56,18 +56,56 @@ const getPriorityColor = (priority: number): string => {
   return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
 };
 
+// Function to convert GMT to IST and format date
+const formatToIST = (dateString: string): string => {
+  if (!dateString) return "Not Scheduled";
+  const date = parseISO(dateString);
+  // Add 5 hours and 30 minutes to convert to IST
+  const istDate = add(date, { hours: 5, minutes: 30 });
+  return format(istDate, "dd-MM-yyyy");
+};
+
+const formatToISTstartWithYear = (dateString: string): string => {
+  if (!dateString) return "Not Scheduled";
+  const date = parseISO(dateString);
+  // Add 5 hours and 30 minutes to convert to IST
+  const istDate = add(date, { hours: 5, minutes: 30 });
+  return format(istDate, "yyyy-MM-dd");
+};
+
+// Function to format time to IST with both date and time
+const formatToISTWithTime = (dateString: string): string => {
+  if (!dateString) return "Not Scheduled";
+  const date = parseISO(dateString);
+  // Add 5 hours and 30 minutes to convert to IST
+  const istDate = add(date, { hours: 5, minutes: 30 });
+  return format(istDate, "dd-MM-yyyy HH:mm");
+};
+
 export default function DashboardPage() {
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState<{ [key: number]: boolean }>({});
   const [date, setDate] = useState<Date>(new Date());
-  const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(
-    null
-  );
+  const [selectedComplaint, setSelectedComplaint] = useState<
+    Complaint[] | null
+  >(null);
 
   useEffect(() => {
     fetchComplaints();
   }, []);
 
+  useEffect(() => {
+    if (complaints.length > 0) {
+      const todayComplaints = getDayComplaints(new Date());
+      setSelectedComplaint(todayComplaints);
+    }
+  }, [complaints]); // This will run whenever complaints are loaded or updated
+  
+  // Keep your existing useEffect for fetching complaints
+  useEffect(() => {
+    fetchComplaints();
+  }, []);
+  
   const fetchComplaints = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/complaints/`);
@@ -110,11 +148,11 @@ export default function DashboardPage() {
 
   const getDayComplaints = (day: Date): Complaint[] => {
     const formattedDay = format(day, "yyyy-MM-dd");
-    return complaints.filter(
-      (complaint) =>
-        complaint.created_at.startsWith(formattedDay) ||
-        (complaint.scheduled_callback &&
-          complaint.scheduled_callback.startsWith(formattedDay))
+    console.log("Formatted day ", formattedDay);
+    return complaints.filter((complaint) =>
+      formatToISTstartWithYear(complaint.scheduled_callback!).startsWith(
+        formattedDay
+      )
     );
   };
 
@@ -214,6 +252,7 @@ export default function DashboardPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Customer</TableHead>
+              <TableHead>Phone Number</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Created</TableHead>
               <TableHead>Callback</TableHead>
@@ -229,10 +268,15 @@ export default function DashboardPage() {
                 <TableCell className="font-medium">
                   {complaint.customer_name}
                 </TableCell>
+                <TableCell className="font-medium">
+                  {complaint.customer_phone_number}
+                </TableCell>
                 <TableCell>{complaint.complaint_description}</TableCell>
-                <TableCell>{complaint.created_at}</TableCell>
+                <TableCell>{formatToIST(complaint.created_at)}</TableCell>
                 <TableCell>
-                  {complaint.scheduled_callback || "Not Scheduled"}
+                  {complaint.scheduled_callback
+                    ? formatToIST(complaint.scheduled_callback)
+                    : "Not Scheduled"}
                 </TableCell>
                 <TableCell>
                   <Badge
@@ -278,7 +322,9 @@ export default function DashboardPage() {
                       variant="outline"
                       onClick={() => handleResolve(complaint.complaint_id)}
                       disabled={loading[complaint.complaint_id]}
-                      className={`border-green-500 text-green-500 hover:bg-green-50 dark:hover:bg-green-950 ${complaint.status !== "resolved"? "mr-20":""}`}
+                      className={`border-green-500 text-green-500 hover:bg-green-50 dark:hover:bg-green-950 ${
+                        complaint.status !== "resolved" ? "mr-20" : ""
+                      }`}
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
                       {complaint.status !== "resolved"
@@ -304,7 +350,7 @@ export default function DashboardPage() {
                   if (newDate) {
                     setDate(newDate);
                     const complaintsForDay = getDayComplaints(newDate);
-                    setSelectedComplaint(complaintsForDay[0] || null);
+                    setSelectedComplaint(complaintsForDay || null);
                   }
                 }}
                 className="rounded-md border"
@@ -317,34 +363,52 @@ export default function DashboardPage() {
             <h2 className="text-xl font-semibold mb-4">
               Selected Date Details
             </h2>
-            {date && selectedComplaint ? (
+            {date && selectedComplaint && selectedComplaint.length > 0 ? (
               <div className="space-y-4">
-                <div className="p-6 rounded-lg border border-gray-200 dark:border-gray-700">
-                  <h3 className="font-semibold mb-2 text-lg">
-                    {selectedComplaint.customer_name}
-                  </h3>
-                  <p className="text-base text-gray-600 dark:text-gray-400 mb-4">
-                    {selectedComplaint.complaint_description}
-                  </p>
-                  <div className="flex gap-2 mb-4">
-                    <Badge
-                      className={getSeverityColor(
-                        selectedComplaint.sentiment_score
-                      )}
-                    >
-                      Sentiment:{" "}
-                      {(selectedComplaint.sentiment_score * 100).toFixed(0)}%
-                    </Badge>
+                {selectedComplaint.map((complaint) => (
+                  <div
+                    key={complaint.complaint_id}
+                    className="p-6 rounded-lg border border-gray-200 dark:border-gray-700"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-semibold text-lg">
+                        {complaint.customer_name}
+                      </h3>
+                      <Badge
+                        className={getSeverityColor(complaint.sentiment_score)}
+                      >
+                        Sentiment:{" "}
+                        {(complaint.sentiment_score * 100).toFixed(0)}%
+                      </Badge>
+                    </div>
+                    <p className="text-base text-gray-600 dark:text-gray-400 mb-4">
+                      {complaint.complaint_description}
+                    </p>
+                    <div className="flex justify-between items-center">
+                      <p className="text-base">
+                        <strong>Call Scheduled:</strong>{" "}
+                        {complaint.scheduled_callback
+                          ? formatToISTWithTime(complaint.scheduled_callback)
+                          : "Not Scheduled"}
+                      </p>
+                      <Badge
+                        className={getPriorityColor(complaint.priority_score)}
+                      >
+                        {complaint.priority_score >= 0.7
+                          ? "High Priority"
+                          : complaint.priority_score >= 0.4
+                          ? "Medium Priority"
+                          : "Low Priority"}
+                      </Badge>
+                    </div>
                   </div>
-                  <p className="text-base">
-                    <strong>Call Scheduled:</strong>{" "}
-                    {selectedComplaint.scheduled_callback || "Not Scheduled"}
-                  </p>
-                </div>
+                ))}
               </div>
             ) : (
               <p className="text-gray-500 dark:text-gray-400">
-                Select a date to view complaint details
+                {date
+                  ? "No complaints found for this date"
+                  : "Select a date to view complaint details"}
               </p>
             )}
           </div>

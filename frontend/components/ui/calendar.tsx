@@ -1,5 +1,5 @@
 import React from 'react';
-import { format } from "date-fns";
+import { format, parseISO, add } from "date-fns";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { DayPicker, DayPickerSingleProps } from "react-day-picker";
@@ -23,6 +23,14 @@ type CalendarProps = {
   className?: string;
 } & Omit<DayPickerSingleProps, 'mode'>;
 
+const formatToIST = (dateString: string): string => {
+  if (!dateString) return "";
+  const date = parseISO(dateString);
+  // Add 5 hours and 30 minutes to convert to IST
+  const istDate = add(date, { hours: 5, minutes: 30 });
+  return format(istDate, "yyyy-MM-dd");
+};
+
 export default function Calendar({
   className,
   classNames,
@@ -41,7 +49,8 @@ export default function Calendar({
       highSeverity: (date: Date) => {
         const formattedDay = format(date, "yyyy-MM-dd");
         const dayComplaints = complaints.filter(
-          complaint => complaint.scheduled_callback?.startsWith(formattedDay)
+          complaint => complaint.scheduled_callback && 
+            formatToIST(complaint.scheduled_callback).startsWith(formattedDay)
         );
         if (dayComplaints.length === 0) return false;
         const highestSeverity = Math.max(...dayComplaints.map(c => c.sentiment_score));
@@ -50,7 +59,8 @@ export default function Calendar({
       mediumSeverity: (date: Date) => {
         const formattedDay = format(date, "yyyy-MM-dd");
         const dayComplaints = complaints.filter(
-          complaint => complaint.scheduled_callback?.startsWith(formattedDay)
+          complaint => complaint.scheduled_callback && 
+            formatToIST(complaint.scheduled_callback).startsWith(formattedDay)
         );
         if (dayComplaints.length === 0) return false;
         const highestSeverity = Math.max(...dayComplaints.map(c => c.sentiment_score));
@@ -59,7 +69,8 @@ export default function Calendar({
       lowSeverity: (date: Date) => {
         const formattedDay = format(date, "yyyy-MM-dd");
         const dayComplaints = complaints.filter(
-          complaint => complaint.scheduled_callback?.startsWith(formattedDay)
+          complaint => complaint.scheduled_callback && 
+            formatToIST(complaint.scheduled_callback).startsWith(formattedDay)
         );
         if (dayComplaints.length === 0) return false;
         const highestSeverity = Math.max(...dayComplaints.map(c => c.sentiment_score));
