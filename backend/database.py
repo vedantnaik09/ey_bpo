@@ -195,13 +195,31 @@ class DatabaseManager:
         if conn:
             try:
                 with conn.cursor() as cursor:
+                    # Fetch the current status of the complaint
                     cursor.execute("""
-                        UPDATE complaints
-                        SET status = 'resolved'
+                        SELECT status
+                        FROM complaints
                         WHERE complaint_id = %s
                     """, (complaint_id,))
-                conn.commit()
-                return True
+                    result = cursor.fetchone()
+                    
+                    if not result:
+                        print(f"No complaint found with ID {complaint_id}")
+                        return False
+                    
+                    current_status = result[0]
+                    # Determine the new status
+                    new_status = 'pending' if current_status == 'resolved' else 'resolved'
+                    
+                    # Update the status
+                    cursor.execute("""
+                        UPDATE complaints
+                        SET status = %s
+                        WHERE complaint_id = %s
+                    """, (new_status, complaint_id))
+                    
+                    conn.commit()
+                    return True
             except Exception as e:
                 print(f"Error resolving complaint: {e}")
                 return False

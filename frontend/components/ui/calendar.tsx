@@ -6,15 +6,16 @@ import { DayPicker, DayPickerSingleProps } from "react-day-picker";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Complaint {
-  id: number;
-  customerName: string;
-  phone: string;
-  subject: string;
-  date: string;
-  callScheduled: string | null;
-  severity: number;
-  priority: 'Low' | 'Medium' | 'High' | 'Critical';
-  resolved: boolean;
+  complaint_id: number;
+  customer_name: string;
+  customer_phone_number: string;
+  complaint_description: string;
+  sentiment_score: number;
+  urgency_score: number;
+  priority_score: number;
+  status: string;
+  scheduled_callback: string | null;
+  created_at: string;
 }
 
 type CalendarProps = {
@@ -29,42 +30,41 @@ export default function Calendar({
   complaints,
   ...props
 }: CalendarProps) {
-
   const modifiersClassNames = {
     highSeverity: "bg-red-200 hover:bg-red-300 dark:bg-red-900 dark:hover:bg-red-800",
     mediumSeverity: "bg-yellow-200 hover:bg-yellow-300 dark:bg-yellow-900 dark:hover:bg-yellow-800",
-    lowSeverity: "bg-green-200 hover:bg-green-300 dark:bg-green-900 dark:hover:bg-green-800"
+    lowSeverity: "bg-green-200 hover:bg-green-300 dark:bg-green-900 dark:hover:bg-green-800",
   };
 
   const modifiers = React.useMemo(() => {
     const mods: { [key: string]: (date: Date) => boolean } = {
       highSeverity: (date: Date) => {
-        const formattedDay = format(date, "dd-MM-yyyy");
+        const formattedDay = format(date, "yyyy-MM-dd");
         const dayComplaints = complaints.filter(
-          complaint => complaint.callScheduled === formattedDay
+          complaint => complaint.scheduled_callback?.startsWith(formattedDay)
         );
         if (dayComplaints.length === 0) return false;
-        const highestSeverity = Math.max(...dayComplaints.map(c => c.severity));
+        const highestSeverity = Math.max(...dayComplaints.map(c => c.sentiment_score));
         return highestSeverity >= 0.8;
       },
       mediumSeverity: (date: Date) => {
-        const formattedDay = format(date, "dd-MM-yyyy");
+        const formattedDay = format(date, "yyyy-MM-dd");
         const dayComplaints = complaints.filter(
-          complaint => complaint.callScheduled === formattedDay
+          complaint => complaint.scheduled_callback?.startsWith(formattedDay)
         );
         if (dayComplaints.length === 0) return false;
-        const highestSeverity = Math.max(...dayComplaints.map(c => c.severity));
+        const highestSeverity = Math.max(...dayComplaints.map(c => c.sentiment_score));
         return highestSeverity >= 0.5 && highestSeverity < 0.8;
       },
       lowSeverity: (date: Date) => {
-        const formattedDay = format(date, "dd-MM-yyyy");
+        const formattedDay = format(date, "yyyy-MM-dd");
         const dayComplaints = complaints.filter(
-          complaint => complaint.callScheduled === formattedDay
+          complaint => complaint.scheduled_callback?.startsWith(formattedDay)
         );
         if (dayComplaints.length === 0) return false;
-        const highestSeverity = Math.max(...dayComplaints.map(c => c.severity));
+        const highestSeverity = Math.max(...dayComplaints.map(c => c.sentiment_score));
         return highestSeverity < 0.5;
-      }
+      },
     };
     return mods;
   }, [complaints]);
