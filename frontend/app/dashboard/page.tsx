@@ -116,21 +116,29 @@ export default function DashboardPage() {
     }
   };
 
-  const handleCall = async (phone: string, id: number) => {
+  const handleCall = async (id: number) => {
     setLoading((prev) => ({ ...prev, [id]: true }));
     try {
-      toast.success("Call initiated successfully");
+      const response = await fetch(`${API_BASE_URL}/complaints/${id}/resolve`, {
+        method: "POST",
+      });
+      if (response.ok) {
+        fetchComplaints();
+        toast.success("Calling User");
+      } else {
+        toast.error("Failed to call");
+      }
     } catch (error) {
-      toast.error("Failed to initiate call");
+      toast.error("Failed to call");
     } finally {
       setLoading((prev) => ({ ...prev, [id]: false }));
     }
   };
 
-  const handleResolve = async (id: number) => {
+  const toggleResolve = async (id: number) => {
     setLoading((prev) => ({ ...prev, [id]: true }));
     try {
-      const response = await fetch(`${API_BASE_URL}/complaints/${id}/resolve`, {
+      const response = await fetch(`${API_BASE_URL}/complaints/${id}/toggleResolve`, {
         method: "POST",
       });
       if (response.ok) {
@@ -307,7 +315,6 @@ export default function DashboardPage() {
                       size="sm"
                       onClick={() =>
                         handleCall(
-                          complaint.customer_phone_number,
                           complaint.complaint_id
                         )
                       }
@@ -320,7 +327,7 @@ export default function DashboardPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleResolve(complaint.complaint_id)}
+                      onClick={() => toggleResolve(complaint.complaint_id)}
                       disabled={loading[complaint.complaint_id]}
                       className={`border-green-500 text-green-500 hover:bg-green-50 dark:hover:bg-green-950 ${
                         complaint.status !== "resolved" ? "mr-20" : ""

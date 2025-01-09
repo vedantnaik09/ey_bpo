@@ -110,13 +110,22 @@ async def resolve_complaint(complaint_id: int):
     resolve(
         complaint.iloc[0]['customer_phone_number'],
         complaint.iloc[0]['complaint_description']
-    )
+    )    
+    return {"message": "Complaint resolved successfully"}
+
+@app.post("/complaints/{complaint_id}/toggleResolve")
+async def resolve_complaint(complaint_id: int):
+    complaint = db.get_complaints()
+    complaint = complaint[complaint['complaint_id'] == complaint_id]
     
+    if complaint.empty:
+        raise HTTPException(status_code=404, detail="Complaint not found")
+        
     success = db.resolve_complaint(complaint_id)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to resolve complaint")
     
-    return {"message": "Complaint resolved successfully"}
+    return {"message": "Toggled Resolve"}
 
 @app.post("/complaints/schedule")
 async def schedule_callback(schedule: ScheduleCallback):

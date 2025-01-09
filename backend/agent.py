@@ -30,12 +30,15 @@ logger.setLevel(logging.INFO)
 
 class DatabaseManager:
     def __init__(self):
+        load_dotenv(".env.local")
+        
+        # Retrieve database connection parameters from environment
         self.connection_params = {
-            "dbname": "BPO",
-            "user": "postgres",
-            "password": "Vivek@2004",
-            "host": "localhost",
-            "port": "5432"
+            "dbname": os.getenv("DB_NAME"),
+            "user": os.getenv("DB_USER"),
+            "password": os.getenv("DB_PASSWORD"),
+            "host": os.getenv("DB_HOST"),
+            "port": os.getenv("DB_PORT"),
         }
         self.connection = None
 
