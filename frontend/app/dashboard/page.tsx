@@ -295,16 +295,16 @@ export default function DashboardPage() {
                   {complaint.customer_phone_number}
                 </TableCell>
                 <TableCell>{complaint.complaint_description}</TableCell>
-                <TableCell>{formatToIST(complaint.created_at)}</TableCell>
+                <TableCell className="whitespace-nowrap">{formatToIST(complaint.created_at)}</TableCell>
                 <TableCell>
-                  {complaint.scheduled_callback
+                  <div className="text-center">{complaint.scheduled_callback
                     ? formatToIST(complaint.scheduled_callback)
-                    : "Not Scheduled"}
+                    : "Not Scheduled"}</div>
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={() => handleOpenReschedule(complaint.complaint_id)}
-                    className="ml-2 text-blue-500 hover:bg-background"
+                    className="text-blue-500 hover:bg-background"
                   >
                     Reschedule
                   </Button>
