@@ -109,6 +109,13 @@ export default function DashboardPage() {
   const [rescheduleComplaintId, setRescheduleComplaintId] = useState<
     number | null
   >(null);
+  const [hoveredComplaintId, setHoveredComplaintId] = useState<number | null>(
+    null
+  );
+  const [position, setPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
 
   useEffect(() => {
     fetchComplaints();
@@ -195,40 +202,18 @@ export default function DashboardPage() {
     );
   };
 
-  const getDateStyle = (day: Date): React.CSSProperties | undefined => {
-    const formattedDay = format(day, "yyyy-MM-dd");
-    const dayComplaints = complaints.filter(
-      (complaint) =>
-        complaint.scheduled_callback &&
-        complaint.scheduled_callback.startsWith(formattedDay)
-    );
+  const handleMouseEnter = (event: React.MouseEvent, complaintId: number) => {
+    const rect = (event.target as HTMLElement).getBoundingClientRect();
+    setPosition({
+      top: rect.top + window.scrollY, // Top position of the row
+      left: rect.left + window.scrollX, // Left position of the row
+    });
+    setHoveredComplaintId(complaintId);
+  };
 
-    if (dayComplaints.length === 0) {
-      return undefined;
-    }
-
-    const highestSeverity = Math.max(
-      ...dayComplaints.map((c) => c.sentiment_score)
-    );
-
-    if (highestSeverity >= 0.8) {
-      return {
-        backgroundColor: "rgba(239, 68, 68, 0.2)",
-        borderRadius: "0.375rem",
-        fontWeight: "bold",
-      };
-    } else if (highestSeverity >= 0.5) {
-      return {
-        backgroundColor: "rgba(234, 179, 8, 0.2)",
-        borderRadius: "0.375rem",
-        fontWeight: "bold",
-      };
-    }
-    return {
-      backgroundColor: "rgba(34, 197, 94, 0.2)",
-      borderRadius: "0.375rem",
-      fontWeight: "bold",
-    };
+  const handleMouseLeave = () => {
+    setHoveredComplaintId(null);
+    setPosition(null);
   };
 
   const totalComplaints = complaints.length;
@@ -351,18 +336,23 @@ export default function DashboardPage() {
                   )}
                 </TableCell>
                 <TableCell>
-                  <div className={`flex gap-2 ${complaint.status === "resolved"? '': 'justify-end'}`}>
+                  <div
+                    className={`flex gap-2 ${
+                      complaint.status === "resolved" ? "" : "justify-end"
+                    }`}
+                  >
                     {complaint.status === "resolved" ? (
                       <div
                         className="group relative self-center ml-3"
+                        onMouseEnter={(e) =>
+                          handleMouseEnter(e, complaint.complaint_id)
+                        }
+                        onMouseLeave={handleMouseLeave}
                         style={{ cursor: "pointer" }}
                       >
                         <span className="h-5 w-5 rounded-full bg-blue-500 text-white flex items-center justify-center">
                           i
                         </span>
-                        <div className="absolute w-[200px] hidden group-hover:block bg-gray-700 text-white text-xs rounded-md p-2 top-8 -left-1/2 transform -translate-x-1/2">
-                          {complaint.knowledge_base_solution}
-                        </div>
                       </div>
                     ) : (
                       <Button
@@ -396,6 +386,22 @@ export default function DashboardPage() {
             ))}
           </TableBody>
         </Table>
+        {/* Display knowledge base solution when a row is hovered */}
+        {hoveredComplaintId !== null && position && (
+          <div
+            className="absolute bg-gray-700 text-white text-xs rounded-md p-2 w-[200px]"
+            style={{
+              top: position.top + 30, // Slightly below the row
+              left: position.left - 80, // Slightly to the right of the row
+            }}
+          >
+            {
+              complaints.find(
+                (complaint) => complaint.complaint_id === hoveredComplaintId
+              )?.knowledge_base_solution
+            }
+          </div>
+        )}
       </Card>
 
       {/* Reschedule Modal */}
@@ -444,8 +450,8 @@ export default function DashboardPage() {
                       <Badge
                         className={getSeverityColor(complaint.priority_score)}
                       >
-                        Sentiment:{" "}
-                        {(complaint.priority_score * 100).toFixed(0)}%
+                        Sentiment: {(complaint.priority_score * 100).toFixed(0)}
+                        %
                       </Badge>
                     </div>
                     <p className="text-base text-gray-600 dark:text-gray-400 mb-4">
