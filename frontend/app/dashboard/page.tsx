@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { format, parseISO, add } from "date-fns";
 import { Card } from "@/components/ui/card";
 import Calendar from "@/components/ui/calendar";
@@ -25,6 +26,8 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/firebase/config";
 
 interface Complaint {
   complaint_id: number;
@@ -85,6 +88,18 @@ const formatToISTWithTime = (dateString: string): string => {
 };
 
 export default function DashboardPage() {
+  const { push } = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        push("/");
+      }
+    });
+
+    return () => unsubscribe();
+  }, [push]);
+
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState<{ [key: number]: boolean }>({});
   const [date, setDate] = useState<Date>(new Date());
