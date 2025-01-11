@@ -53,7 +53,7 @@ export default function PricingPage() {
               </div>
               <CardTitle className="text-2xl text-white">Professional</CardTitle>
               <CardDescription>For medium-sized BPO operations</CardDescription>
-              <p className="text-3xl font-bold text-white">₹49,999<span className="text-lg font-normal text-gray-400">/month</span></p>
+              <p className="text-3xl font-bold text-white">₹9,999<span className="text-lg font-normal text-gray-400">/month</span></p>
             </CardHeader>
             <CardContent className="space-y-4">
               <ul className="space-y-2">
