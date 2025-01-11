@@ -162,7 +162,7 @@ class DatabaseManager:
                         complaint_id, customer_name, customer_phone_number,
                         complaint_description, sentiment_score, urgency_score,
                         priority_score, status, scheduled_callback,
-                        created_at
+                        created_at, knowledge_base_solution
                     FROM complaints 
                     ORDER BY priority_score DESC, created_at DESC
                 """

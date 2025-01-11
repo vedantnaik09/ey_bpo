@@ -37,6 +37,7 @@ interface Complaint {
   status: string;
   scheduled_callback: string | null;
   created_at: string;
+  knowledge_base_solution: string;
 }
 
 const API_BASE_URL = "http://localhost:8000";
@@ -295,11 +296,15 @@ export default function DashboardPage() {
                   {complaint.customer_phone_number}
                 </TableCell>
                 <TableCell>{complaint.complaint_description}</TableCell>
-                <TableCell className="whitespace-nowrap">{formatToIST(complaint.created_at)}</TableCell>
+                <TableCell className="whitespace-nowrap">
+                  {formatToIST(complaint.created_at)}
+                </TableCell>
                 <TableCell>
-                  <div className="text-center">{complaint.scheduled_callback
-                    ? formatToIST(complaint.scheduled_callback)
-                    : "Not Scheduled"}</div>
+                  <div className="text-center">
+                    {complaint.scheduled_callback
+                      ? formatToIST(complaint.scheduled_callback)
+                      : "Not Scheduled"}
+                  </div>
                   <Button
                     size="sm"
                     variant="outline"
@@ -310,9 +315,7 @@ export default function DashboardPage() {
                   </Button>
                 </TableCell>
                 <TableCell>
-                  <Badge
-                    className={getSeverityColor(complaint.priority_score)}
-                  >
+                  <Badge className={getSeverityColor(complaint.priority_score)}>
                     {(complaint.priority_score * 100).toFixed(0)}%
                   </Badge>
                 </TableCell>
@@ -333,16 +336,31 @@ export default function DashboardPage() {
                   )}
                 </TableCell>
                 <TableCell>
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleCall(complaint.complaint_id)}
-                      disabled={loading[complaint.complaint_id]}
-                      className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-                    >
-                      <Phone className="h-4 w-4 mr-2" />
-                      Call
-                    </Button>
+                  <div className={`flex gap-2 ${complaint.status === "resolved"? '': 'justify-end'}`}>
+                    {complaint.status === "resolved" ? (
+                      <div
+                        className="group relative self-center ml-3"
+                        style={{ cursor: "pointer" }}
+                      >
+                        <span className="h-5 w-5 rounded-full bg-blue-500 text-white flex items-center justify-center">
+                          i
+                        </span>
+                        <div className="absolute w-[200px] hidden group-hover:block bg-gray-700 text-white text-xs rounded-md p-2 top-8 -left-1/2 transform -translate-x-1/2">
+                          {complaint.knowledge_base_solution}
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={() => handleCall(complaint.complaint_id)}
+                        disabled={loading[complaint.complaint_id]}
+                        className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                      >
+                        <Phone className="h-4 w-4 mr-2" />
+                        Call
+                      </Button>
+                    )}
+
                     <Button
                       size="sm"
                       variant="outline"

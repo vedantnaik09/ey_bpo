@@ -37,6 +37,7 @@ class ComplaintResponse(ComplaintBase):
     status: str
     scheduled_callback: Optional[datetime]
     created_at: datetime
+    knowledge_base_solution: str
 
 class ScheduleCallback(BaseModel):
     complaint_id: int
