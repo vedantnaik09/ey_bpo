@@ -33,7 +33,7 @@ export function SignUpForm() {
       const userCredential = await createUserWithEmailAndPassword(auth, email.value, password.value);
       await updateProfile(userCredential.user, { displayName: name.value });
       console.log("User details:", userCredential.user);
-      push('/');
+      push('/dashboard');
     } catch (error) {
       const firebaseError = error as { message: string };
       setError(firebaseError.message);
@@ -47,7 +47,7 @@ export function SignUpForm() {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       console.log("User details:", result.user);
-      push('/');
+      push('/dashboard');
     } catch (error) {
       const firebaseError = error as { message: string };
       setError(firebaseError.message);

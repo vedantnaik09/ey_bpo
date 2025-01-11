@@ -427,10 +427,10 @@ export default function DashboardPage() {
                         {complaint.customer_name}
                       </h3>
                       <Badge
-                        className={getSeverityColor(complaint.sentiment_score)}
+                        className={getSeverityColor(complaint.priority_score)}
                       >
                         Sentiment:{" "}
-                        {(complaint.sentiment_score * 100).toFixed(0)}%
+                        {(complaint.priority_score * 100).toFixed(0)}%
                       </Badge>
                     </div>
                     <p className="text-base text-gray-600 dark:text-gray-400 mb-4">
