@@ -27,7 +27,7 @@ export function LoginForm() {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       console.log("User details:", result.user);
-      push("/");
+      push("/dashboard");
     } catch (error) {
       const firebaseError = error as { message: string };
       setError(firebaseError.message);
@@ -49,7 +49,7 @@ export function LoginForm() {
         .then((userCredential) => {
           const user = userCredential.user;
           console.log("User details:", user);
-          push("/");
+          push("/dashboard");
         })
         .catch((error) => {
           console.log(error.message);

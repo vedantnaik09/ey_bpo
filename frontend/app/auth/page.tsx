@@ -14,7 +14,7 @@ export default function AuthPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        push("/");
+        push("/dashboard");
       }
     });
 
