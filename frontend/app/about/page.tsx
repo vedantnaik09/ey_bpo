@@ -12,54 +12,23 @@ export default function AboutPage() {
             Transforming BPO Operations with AI
           </h1>
           <p className="mt-6 text-xl text-gray-400 max-w-3xl mx-auto">
-            We're revolutionizing claims processing in Indian BPOs through intelligent automation, 
-            making life easier for agents like Nisha while delivering exceptional client experiences.
+            At RESOLVR, our mission is to revolutionize BPO operations by leveraging cutting-edge AI technology to enhance efficiency, empower agents, and deliver exceptional customer experiences. We are committed to transforming claims processing workflows into seamless, automated, and scalable solutions.
           </p>
         </div>
 
-        {/* Problem Solution Section */}
-        <div className="grid md:grid-cols-2 gap-12 items-center my-20">
+        {/* Vision and Impact Section */}
+        <div className="grid md:grid-cols-1 gap-12 items-center my-20">
           <div>
-            <h2 className="text-3xl font-bold text-white mb-6">The Challenge We're Solving</h2>
+            <h2 className="text-3xl font-bold text-white mb-6">Our Vision</h2>
             <p className="text-gray-400 leading-relaxed">
-              BPO agents handle overwhelming volumes of claims calls daily, struggling with manual scheduling,
-              multiple system entries, and outdated knowledge bases. We've created an AI-powered solution that
-              automates routine tasks, analyzes client sentiment, and provides instant access to relevant information.
+              Our vision is to lead the digital transformation of Indian BPOs by setting a new standard for AI integration in claims processing. We envision a future where technology empowers agents, fosters client trust, and delivers unparalleled service quality.
             </p>
-            <Button className="mt-8 bg-purple-600 hover:bg-purple-700">
-              Learn More
-            </Button>
+            <h3 className="text-2xl font-bold text-white mt-8 mb-4">Impact</h3>
+            <p className="text-gray-400 leading-relaxed">
+              With RESOLVR, BPOs can achieve a 40% reduction in manual workloads, 30% faster resolution times, and significantly improved customer satisfaction scores. This transformative solution ensures agents like Nisha can handle grievances effectively, without burnout.
+            </p>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            {[
-              {
-                icon: Clock,
-                title: "Automated Scheduling",
-                description: "Smart callback scheduling based on claim priority"
-              },
-              {
-                icon: Heart,
-                title: "Sentiment Analysis",
-                description: "Real-time client emotion detection"
-              },
-              {
-                icon: Brain,
-                title: "Smart Knowledge Base",
-                description: "AI-powered information retrieval"
-              },
-              {
-                icon: TrendingUp,
-                title: "Enhanced Efficiency",
-                description: "Streamlined workflow automation"
-              }
-            ].map((feature) => (
-              <div key={feature.title} className="bg-gray-900 p-6 rounded-lg">
-                <feature.icon className="h-8 w-8 text-purple-500 mb-4" />
-                <h3 className="text-white font-semibold mb-2">{feature.title}</h3>
-                <p className="text-gray-400 text-sm">{feature.description}</p>
-              </div>
-            ))}
-          </div>
+         
         </div>
 
         {/* Impact Stats */}
@@ -77,25 +46,50 @@ export default function AboutPage() {
           ))}
         </div>
 
-        {/* Case Study */}
+        {/* Team Section */}
+        <div className="my-20">
+          <h2 className="text-3xl font-bold text-white text-center mb-8">Our Team</h2>
+          <p className="text-gray-400 text-center mb-12 max-w-3xl mx-auto">
+            Our team consists of five passionate innovators who bring together expertise in AI development, customer service workflows, and operational efficiency. United by our vision, we aim to redefine the future of BPO claims processing.
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
+            {[
+              "Vedant Naik",
+              "Vivek Nair",
+              "Ravirajsingh Sodha",
+              "Suyash Konduskar",
+              "Nishant Golakiya"
+            ].map((member) => (
+              <div key={member} className="text-center">
+                {/* <div className="w-32 h-32 bg-gray-700 rounded-full mx-auto mb-4"></div> */}
+                <h3 className="text-white font-semibold">{member}</h3>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Milestones Section */}
         <div className="bg-gray-900 rounded-xl p-8 my-20">
-          <h2 className="text-2xl font-bold text-white mb-6">Success Story: Claims Processing Transformation</h2>
-          <div className="grid md:grid-cols-2 gap-8">
-            <div>
-              <p className="text-gray-400 mb-4">
-                "The AI-powered system has transformed how we handle claims. Our agents are more efficient,
-                our clients are happier, and our processing times have been cut in half. The automated
-                scheduling and sentiment analysis features have been game-changers for our operations."
-              </p>
-              <p className="text-white font-semibold">- Leading Indian BPO Manager</p>
+          <h2 className="text-2xl font-bold text-white mb-6">Our Journey and Milestones</h2>
+          <p className="text-gray-400 mb-4">
+            From identifying the inefficiencies in current BPO workflows to designing a robust AI-powered solution, our journey has been fueled by innovation and dedication. RESOLVR represents our commitment to delivering tangible improvements in claims processing efficiency.
+          </p>
+          <div className="grid md:grid-cols-2 gap-8 mt-8">
+            <div className="bg-gray-800 p-6 rounded-lg">
+              <h3 className="text-xl font-semibold text-white mb-2">Problem Identification</h3>
+              <p className="text-gray-400">Recognized the challenges faced by BPO agents in claims processing</p>
             </div>
-            <div className="relative h-[200px] rounded-lg overflow-hidden">
-              <Image
-                src="/placeholder.svg"
-                alt="BPO Success Story"
-                fill
-                className="object-cover"
-              />
+            <div className="bg-gray-800 p-6 rounded-lg">
+              <h3 className="text-xl font-semibold text-white mb-2">Solution Design</h3>
+              <p className="text-gray-400">Developed AI-powered automation for scheduling and sentiment analysis</p>
+            </div>
+            <div className="bg-gray-800 p-6 rounded-lg">
+              <h3 className="text-xl font-semibold text-white mb-2">Prototype Development</h3>
+              <p className="text-gray-400">Created a working prototype of RESOLVR</p>
+            </div>
+            <div className="bg-gray-800 p-6 rounded-lg">
+              <h3 className="text-xl font-semibold text-white mb-2">Future Goals</h3>
+              <p className="text-gray-400">Continuous improvement and expansion of RESOLVR's capabilities</p>
             </div>
           </div>
         </div>
@@ -104,17 +98,18 @@ export default function AboutPage() {
         <div className="text-center mt-20">
           <h2 className="text-3xl font-bold text-white mb-6">Ready to Transform Your BPO Operations?</h2>
           <p className="text-gray-400 mb-8">
-            Join leading Indian BPOs in revolutionizing claims processing with AI-powered automation
+            Discover how RESOLVR is reshaping claims processing. Contact us to learn more about our AI-driven solution and explore how it can elevate your BPO operations.
           </p>
           <div className="flex gap-4 justify-center">
             <Button className="bg-purple-600 hover:bg-purple-700">
-              Start Free Trial
+              Get Started
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-            <Button variant="outline">Schedule Demo</Button>
+            <Button variant="outline">Contact Us</Button>
           </div>
         </div>
       </div>
     </div>
   )
 }
+
