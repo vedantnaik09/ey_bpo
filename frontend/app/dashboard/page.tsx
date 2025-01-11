@@ -311,9 +311,9 @@ export default function DashboardPage() {
                 </TableCell>
                 <TableCell>
                   <Badge
-                    className={getSeverityColor(complaint.sentiment_score)}
+                    className={getSeverityColor(complaint.priority_score)}
                   >
-                    {(complaint.sentiment_score * 100).toFixed(0)}%
+                    {(complaint.priority_score * 100).toFixed(0)}%
                   </Badge>
                 </TableCell>
                 <TableCell>
