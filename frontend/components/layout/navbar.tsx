@@ -64,7 +64,7 @@ export function Navbar() {
           <div className="flex-1 flex items-center justify-end gap-4">
             <Button variant="ghost" size="sm" className="hidden md:flex">
               <Phone className="mr-2 h-4 w-4" />
-              Contact
+              <Link href={'/contact'} className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">Contact</Link>
             </Button>
             {user ? (
               <div className="relative">
