@@ -7,6 +7,7 @@ import uvicorn
 from database import DatabaseManager
 from ai_analyzer import ComplaintAnalyzer
 from call_agent import resolve
+import pandas as pd
 
 app = FastAPI(title="BPO Complaint System API")
 
@@ -37,15 +38,21 @@ class ComplaintResponse(ComplaintBase):
     status: str
     scheduled_callback: Optional[datetime]
     created_at: datetime
-    knowledge_base_solution: str
+    # knowledge_base_solution: str
 
 class ScheduleCallback(BaseModel):
     complaint_id: int
     callback_time: datetime
+co=ComplaintAnalyzer()
 
 @app.post("/complaints/", response_model=ComplaintResponse)
 async def create_complaint(complaint: ComplaintBase):
-    sentiment, urgency, politeness, priority = analyzer.analyze_complaint(complaint.complaint_description)
+  
+    complaint_descriptions=db.get_complaint_descriptions(complaint.customer_phone_number)
+    count=co.count_similar_complaints(complaint_descriptions)
+    sentiment, urgency, politeness, priority = analyzer.analyze_complaint(complaint.complaint_description,count)
+   
+    
     success = db.submit_complaint(
         complaint.customer_name,
         complaint.customer_phone_number,
@@ -53,7 +60,8 @@ async def create_complaint(complaint: ComplaintBase):
         sentiment,
         urgency,
         politeness,
-        priority
+        priority,
+        
     )
     if not success:
         raise HTTPException(status_code=500, detail="Failed to submit complaint")
@@ -88,7 +96,14 @@ async def get_complaints(
             df['complaint_description'].str.contains(search, case=False)
         ]
     
-    return df.to_dict('records')
+    return [
+    {
+        **row.to_dict(), 
+        'complaint_id': int(row['complaint_id']),  # Explicitly convert to int
+        'scheduled_callback': row['scheduled_callback'].isoformat() if pd.notna(row['scheduled_callback']) else None
+    } 
+    for _, row in df.iterrows()
+]
 
 @app.get("/dashboard/metrics/")
 async def get_dashboard_metrics():
@@ -115,7 +130,7 @@ async def resolve_complaint(complaint_id: int):
     return {"message": "Complaint resolved successfully"}
 
 @app.post("/complaints/{complaint_id}/toggleResolve")
-async def resolve_complaint(complaint_id: int):
+async def toggle_resolve_complaint(complaint_id: int):
     complaint = db.get_complaints()
     complaint = complaint[complaint['complaint_id'] == complaint_id]
     
@@ -135,7 +150,7 @@ async def schedule_callback(schedule: ScheduleCallback):
         raise HTTPException(status_code=400, detail="Time slot already taken")
     return {"message": "Callback scheduled successfully"}
 
-@app.post("/complaints/schedule-all")
+@app.get("/complaints/schedule-all")
 async def schedule_all_complaints():
     success = db.schedule_existing_complaints()
     if not success:
@@ -148,4 +163,4 @@ async def get_callbacks(date: str):
     return callbacks.to_dict('records')
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000,reload=True)

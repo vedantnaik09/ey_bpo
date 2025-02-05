@@ -26,7 +26,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <Navbar />
-          {children}
+            {children}
         </ThemeProvider>
       </body>
     </html>

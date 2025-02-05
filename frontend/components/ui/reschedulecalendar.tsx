@@ -89,7 +89,7 @@ export default function RescheduleCalendar({
                 "w-12 h-12 text-gray-600 dark:text-gray-300 text-sm font-medium text-center",
               row: "flex",
               cell: "w-12 h-12 text-center p-0 relative rounded-md focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500 dark:focus-within:ring-blue-300",
-              day: "flex items-center justify-center w-12 h-12 rounded-md text-sm font-medium text-gray-900 dark:text-gray-100 hover:bg-blue-100 dark:hover:bg-blue-800",
+              day: "flex items-center justify-center w-12 h-12 rounded-md text-sm font-medium text-gray-900 dark:text-gray-100 hover:bg-blue-100 dark:hover:bg-blue-800 hover:text-black dark:hover:text-black",
               day_selected:
                 "bg-blue-500 text-white dark:bg-blue-600 dark:text-gray-100",
               day_today:

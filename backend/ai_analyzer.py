@@ -3,7 +3,7 @@ from openai import OpenAI
 import os
 from typing import Tuple
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv('.env.local')
 os.environ['OPENAI_API_KEY']=os.getenv('OPENAI_API_KEY')
 
 
