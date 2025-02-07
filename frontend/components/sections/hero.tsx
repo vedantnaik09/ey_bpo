@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { GradientText } from "@/components/ui/gradient-text";
 import { BackgroundLines } from "@/components/ui/background-lines"
 import { AnimatedFeatureBadge } from '@/components/ui/animated-badge'
+import { useRouter } from 'next/navigation';
 
 export function Hero() {
+  const router = useRouter();
   return (
     <section className="relative min-h-[90vh] flex items-center">
       {/* <BackgroundLines /> */}
-      <div/>
+      <div />
       <div className="container mx-auto px-4 py-20">
         <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
           {/* <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 mb-8 border border-purple-100/20">
@@ -26,14 +28,18 @@ export function Hero() {
             Transform Your BPO with{" "}
             <GradientText>Intelligent Automation</GradientText>
           </h1>
-          
+
           <p className="text-xl text-gray-600 dark:text-gray-300 mb-10 max-w-2xl">
             RESOLVR streamlines client interactions, automates scheduling, and
             enhances customer satisfaction through state-of-the-art AI assistance.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row gap-4">
-            <Button size="lg" className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white border-0">
+            <Button size="lg" className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white border-0"
+              onClick={() => {
+                router.push('/auth');
+              }}
+            >
               Get Started Free
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
