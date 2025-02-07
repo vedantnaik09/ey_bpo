@@ -323,11 +323,10 @@ export default function DashboardPage() {
                       className="focus:outline-none"
                     >
                       <Flag
-                        className={`h-5 w-5 transition-colors ${
-                          complaint.is_escalated
+                        className={`h-5 w-5 transition-colors ${complaint.is_escalated
                             ? "text-red-500 group-hover:fill-red-500"
                             : "text-gray-400 group-hover:text-red-500 group-hover:fill-red-500"
-                        }`}
+                          }`}
                       />
                     </button>
                   </div>
@@ -362,9 +361,8 @@ export default function DashboardPage() {
                       variant="outline"
                       onClick={() => toggleResolve(complaint.complaint_id)}
                       disabled={loading[complaint.complaint_id]}
-                      className={`border-green-500 text-green-500 hover:bg-green-50 dark:hover:bg-green-950 ${
-                        complaint.status !== "resolved" ? "mr-20" : ""
-                      }`}
+                      className={`border-green-500 text-green-500 hover:bg-green-50 dark:hover:bg-green-950 ${complaint.status !== "resolved" ? "mr-20" : ""
+                        }`}
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
                       {complaint.status !== "resolved" ? "Resolve" : "Mark as unresolved"}
