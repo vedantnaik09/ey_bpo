@@ -1,8 +1,11 @@
 from twilio.rest import Client
+import os 
+from dotenv import load_dotenv
+load_dotenv()
 
 # Your Twilio credentials
-account_sid = "AC794a6d3c32085192652213cd6e12073b"
-auth_token = "5416ef4c228ee2b7bc9c6911af8ebce6"
+account_sid =os.getenv('TWILIO_ACCOUNT_SID')
+auth_token = os.getenv('TWILIO_AUTH_TOKEN')
 client = Client(account_sid, auth_token)
 
 def send_whatsapp(to_number):
