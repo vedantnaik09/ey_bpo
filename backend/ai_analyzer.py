@@ -3,15 +3,17 @@ from openai import OpenAI
 import os
 from dotenv import load_dotenv
 from typing import Tuple
+import groq
 
 load_dotenv(dotenv_path=".env.local")
 os.environ['OPENAI_API_KEY'] = os.getenv('OPENAI_API_KEY')
+os.environ['GROQ_API_KEY'] = os.getenv('GROQ_API_KEY')
 
 
 class ComplaintAnalyzer:
-    def _init_(self):
-        self.client = OpenAI()
-        self.model = "gpt-4o-mini"
+    def __init__(self):
+        self.client = groq.Groq()
+        self.model = "gemma2-9b-it"
 
     def analyze_complaint(self, complaint_text: str, past_complaints: int) -> Tuple[float, float, float, float]:
         sentiment = self._analyze_sentiment(complaint_text)
@@ -88,6 +90,43 @@ class ComplaintAnalyzer:
             return float(completion.choices[0].message.content.strip())
         except:
             return 0.5
+    def get_complaint_category(self, complaint: str):
+        response = self.client.chat.completions.create(
+            model=self.model,  # Ensure the model name is correct
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are given a task to categorize the complaints of a Broadband company Customer Care into: \n"
+                            "1. Technical Support: return 0\n"
+                            "2. Billing: return 1\n"
+                            "3. New Connection: return 2\n"
+                            "4. Added Service and Bundle offers: return 3\n"
+                            "Return only the number corresponding to the category. "
+                            "If I get anything else, I will terminate you."
+                },
+                {
+                    "role": "user",
+                    "content": complaint  # Use complaint as a string, not inside {}
+                }
+            ],
+            temperature=0.7,
+            max_tokens=5  # Limit response length as we need only a number
+        )
+
+        result=response.choices[0].message.content.strip()
+        if(result=="0"):
+          result="Technical Support"
+        elif(result=="1"):
+            result="Billing"
+        elif(result=="2"):
+            result="New Connection"
+        elif(result=="3"):
+            result="Added Service and Bundle offers"
+        return result
+        
+        
+           
+
 
     def _calculate_priority(self, sentiment: float, urgency: float, politeness: float, past_complaints: int) -> float:
         # Adjust weights for better differentiation
@@ -107,6 +146,7 @@ class ComplaintAnalyzer:
             ((1 - sentiment) * sentiment_weight) +
             adjusted_past_complaints
         )
+        
         return min(1.0, max(0.0, priority))  # Ensure the result is between 0 and 1
     def count_similar_complaints_with_ticket(self, complaint_data, ticket_id,ticket_id_generated,current_complain) -> list:
             try:
@@ -158,3 +198,5 @@ class ComplaintAnalyzer:
                 # Handle any errors or failures
                 print(f"Error: {e}")
                 return [0,"jT4^1b6s7FwMZ8#9lhRVpKtYz)w0uOeXL3qS"]
+            
+            

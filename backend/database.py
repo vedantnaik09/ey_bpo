@@ -89,7 +89,7 @@ class DatabaseManager:
 
     def submit_complaint(self, name: str, phone: str, description: str, 
                     sentiment: float, urgency: float, politeness: float, 
-                    priority_score: float,first_similar_token:str,past_count:int) -> bool:
+                    priority_score: float,first_similar_token:str,past_count:int,complaint:str) -> bool:
         conn = self.connect()
         if conn:
             try:
@@ -98,10 +98,10 @@ class DatabaseManager:
                     cursor.execute("""
                         INSERT INTO complaints 
                         (customer_name, customer_phone_number, complaint_description, 
-                        sentiment_score, urgency_score, politeness_score, priority_score, status ,ticket_id,past_count)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s ,%s,%s)
+                        sentiment_score, urgency_score, politeness_score, priority_score, status ,ticket_id,past_count,knowledge_base_solution,complaint_category)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s ,%s,%s,%s,%s)
                         RETURNING complaint_id
-                    """, (name, phone, description, sentiment, urgency, politeness, priority_score, 'pending',first_similar_token,past_count))
+                    """, (name, phone, description, sentiment, urgency, politeness, priority_score, 'pending',first_similar_token,past_count,complaint))
                     
                     complaint_id = cursor.fetchone()[0]
                     

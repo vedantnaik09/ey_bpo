@@ -12,7 +12,7 @@ database=DatabaseManager()
 def create_and_persist_index(documents, persist_dir):
     # Initialize the Groq LLM
     llm = Groq(model="llama3-70b-8192", api_key=os.getenv("GROQ_API_KEY"))
-
+    
     # Create a service context
     service_context = ServiceContext.from_defaults(llm=llm)
 

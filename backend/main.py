@@ -8,6 +8,7 @@ from database import DatabaseManager
 from ai_analyzer import ComplaintAnalyzer
 from call_agent import resolve
 import pandas as pd
+from call_agent import database,resolve_db
 
 app = FastAPI(title="BPO Complaint System API")
 
@@ -45,7 +46,7 @@ class ComplaintResponse(ComplaintBase):
 class ScheduleCallback(BaseModel):
     complaint_id: int
     callback_time: datetime
-co=ComplaintAnalyzer()
+
 
 @app.post("/complaints/", response_model=ComplaintResponse)
 async def create_complaint(complaint: ComplaintBase):
@@ -59,12 +60,16 @@ async def create_complaint(complaint: ComplaintBase):
     print("Ticket IDs:", ticket_ids)
 
     # Proceed with further processing
-    past_count, first_similar_token = co.count_similar_complaints_with_ticket(complaint_list, ticket_ids, token,complaint.complaint_description)
+    past_count, first_similar_token = analyzer.count_similar_complaints_with_ticket(complaint_list, ticket_ids, token,complaint.complaint_description)
     print("Count:", past_count)
     print("First Similar Token:", first_similar_token)
 
     sentiment, urgency, politeness, priority = analyzer.analyze_complaint(complaint.complaint_description, past_count)
-
+    problem_description=complaint.complaint_description
+    solution=resolve_db(problem_description)
+    category=analyzer.get_complaint_category(problem_description)
+    
+    
     success = db.submit_complaint(
         complaint.customer_name,
         complaint.customer_phone_number,
@@ -75,6 +80,8 @@ async def create_complaint(complaint: ComplaintBase):
         priority,
         first_similar_token,
         past_count,
+        solution,
+        category   
     )
     if not success:
         raise HTTPException(status_code=500, detail="Failed to submit complaint")
