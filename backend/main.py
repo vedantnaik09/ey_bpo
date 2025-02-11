@@ -3,7 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
+from firebase_admin import auth as firebase_auth
 import uvicorn
+from fastapi import FastAPI, Depends, HTTPException, Request, status, Body
+import firebase_admin
+from firebase_admin import credentials, auth  # for verifying Firebase tokens
 from database import DatabaseManager
 from ai_analyzer import ComplaintAnalyzer
 from call_agent import resolve
@@ -21,8 +25,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize database and analyzer
+# Initialize Firebase Admin, if not already
+if not firebase_admin._apps:
+    cred = credentials.Certificate("./serviceAccountKey.json")
+    firebase_admin.initialize_app(cred)
+# Initialize DB and create tables
 db = DatabaseManager()
+db.create_tables()  # <-- This ensures tables exist
 analyzer = ComplaintAnalyzer()
 
 # Pydantic models
@@ -46,6 +55,7 @@ class ComplaintResponse(ComplaintBase):
 class ScheduleCallback(BaseModel):
     complaint_id: int
     callback_time: datetime
+
 
 
 @app.post("/complaints/", response_model=ComplaintResponse)
@@ -182,6 +192,108 @@ async def schedule_all_complaints():
 async def get_callbacks(date: str):
     callbacks = db.get_scheduled_callbacks(date)
     return callbacks.to_dict('records')
+
+# ------------------- Auth & Users Routes ---------------------
+class TokenData(BaseModel):
+    token: str
+@app.post("/auth")
+async def auth_user(token_data: TokenData):
+    """
+    Verifies a Firebase ID token and upserts the user (default role='employee')
+    into the database if not already present.
+    """
+    try:
+        decoded_token = auth.verify_id_token(token_data.token)
+        email = decoded_token.get("email")
+        if not email:
+            raise HTTPException(
+                status_code=400, detail="No email found in token")
+        success = db.upsert_user(email, role="employee")
+        if success:
+            return {"message": "User upserted successfully", "email": email}
+        else:
+            raise HTTPException(
+                status_code=500, detail="Could not upsert user into DB")
+    except ValueError as e:
+        raise HTTPException(
+            status_code=401, detail=f"Token verification failed: {e}")
+@app.get("/health/db")
+async def health_db():
+    """Check DB connectivity; returns 200 if reachable, 503 otherwise."""
+    if db.check_db_connection():
+        return {"message": "Database is connected successfully."}
+    else:
+        raise HTTPException(
+            status_code=503, detail="Database is not reachable.")
+class UserResponse(BaseModel):
+    user_id: int
+    email: str
+    role: str
+@app.get("/users", response_model=List[UserResponse])
+async def get_users():
+    """Fetch all users from the database."""
+    df = db.get_all_users()
+    # Convert each row to a dict
+    return df.to_dict("records")
+class CurrentUser(BaseModel):
+    email: str
+    role: str
+    domain: str
+def get_current_user(request: Request) -> CurrentUser:
+    # Extract token from Authorization header
+    auth_header = request.headers.get("Authorization")
+    print(auth_header)
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing or invalid Authorization header"
+        )
+    token = auth_header.split("Bearer ")[1]
+    try:
+        decoded_token = firebase_auth.verify_id_token(token)
+        print(decoded_token)
+        email = decoded_token.get("email")
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No email in token"
+            )
+        # Fetch user from DB
+        user_df = db.get_user_by_email(email)
+        print(user_df)
+        if user_df.empty:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found in DB"
+            )
+        # Convert row to a Pydantic object
+        row = user_df.iloc[0]
+        print(row)
+        return CurrentUser(
+            email=row["email"],
+            role=row["role"],
+            domain=row["domain"]
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Token verification failed: {str(e)}"
+        )
+@app.post("/users/domain")
+def change_domain( email: str = Body(...),
+    new_domain: str = Body(...),
+    current_user: CurrentUser = Depends(get_current_user)):
+    print(f"Current user: {current_user}")
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admin can change domains")
+    success = db.update_user_domain(email, new_domain)
+    if success:
+        return {"message": f"Domain updated for {email} to {new_domain}"}
+    else:
+        raise HTTPException(status_code=400, detail="Domain update failed")
+@app.get("/")
+async def root():
+    return {"message": "Welcome to the BPO Complaint System API"}
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

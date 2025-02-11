@@ -27,6 +27,60 @@ class DatabaseManager:
         except Exception as e:
             print(f"Error connecting to database in database.py: {e}")
             return None
+        
+    def create_tables(self):
+        """
+        Creates the 'users' and 'complaints' tables if they do not exist.
+        Ensures 'uuid-ossp' is enabled for UUID generation.
+        """
+        conn = self.connect()
+        if not conn:
+            print("Could not connect to DB; cannot create tables.")
+            return
+        try:
+            with conn.cursor() as cursor:
+                # Enable the uuid-ossp extension for uuid_generate_v4()
+                cursor.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";')
+
+                # 1) Create 'users' table using UUID
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS users (
+                        user_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                        email VARCHAR(255) UNIQUE NOT NULL,
+                        role VARCHAR(50) NOT NULL,
+                        domain VARCHAR(100) NOT NULL DEFAULT 'none',
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
+
+                # 2) Create 'complaints' table
+                cursor.execute("""
+                    CREATE TABLE complaints(
+                    complaint_id SERIAL PRIMARY KEY,
+                    customer_name TEXT NOT NULL,
+                    customer_phone_number TEXT NOT NULL,
+                    complaint_description TEXT NOT NULL,
+                    complaint_category TEXT NOT NULL,
+                    sentiment_score DOUBLE PRECISION,
+                    urgency_score DOUBLE PRECISION,
+                    priority_score DOUBLE PRECISION,
+                    status TEXT,
+                    scheduled_callback TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    knowledge_base_solution TEXT,
+                    ticket_id TEXT,
+                    politeness_score DOUBLE PRECISION,
+                    past_count BIGINT
+                );
+                """)
+
+            conn.commit()
+            print("Tables ensured (created if not existed).")
+        except Exception as e:
+            print(f"Error creating tables: {e}")
+        finally:
+            conn.close()
+
     def get_complaint_descriptions(self, complaint_phone: str) -> dict:
         conn = self.connect()
         if conn:
@@ -89,7 +143,7 @@ class DatabaseManager:
 
     def submit_complaint(self, name: str, phone: str, description: str, 
                     sentiment: float, urgency: float, politeness: float, 
-                    priority_score: float,first_similar_token:str,past_count:int,complaint:str) -> bool:
+                    priority_score: float,first_similar_token:str,past_count:int,solution:str,category) -> bool:
         conn = self.connect()
         if conn:
             try:
@@ -101,7 +155,7 @@ class DatabaseManager:
                         sentiment_score, urgency_score, politeness_score, priority_score, status ,ticket_id,past_count,knowledge_base_solution,complaint_category)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s ,%s,%s,%s,%s)
                         RETURNING complaint_id
-                    """, (name, phone, description, sentiment, urgency, politeness, priority_score, 'pending',first_similar_token,past_count,complaint))
+                    """, (name, phone, description, sentiment, urgency, politeness, priority_score, 'pending',first_similar_token,past_count,solution,category))
                     
                     complaint_id = cursor.fetchone()[0]
                     
