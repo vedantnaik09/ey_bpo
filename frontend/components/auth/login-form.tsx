@@ -26,20 +26,7 @@ export function LoginForm() {
     setIsLoading(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-      const token = await user.getIdToken();
-
-      // 1. Send token to Python backend
-      await fetch("YOUR_PYTHON_BACKEND_URL/auth", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ token }),
-      });
-
-      // 2. Then navigate or do any front-end logic
-      console.log("User details:", user);
+      console.log("User details:", result.user);
       push("/dashboard");
     } catch (error) {
       const firebaseError = error as { message: string };
@@ -58,22 +45,16 @@ export function LoginForm() {
     const password = form.elements.password.value;
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      // 1. Get the ID token
-      const token = await user.getIdToken();
-
-      // 2. Send token to Python backend
-      await fetch("http://localhost:8000/auth", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ token }),
-      });
-
-      console.log("User details:", user);
-      push("/dashboard");
+      await signInWithEmailAndPassword(auth, email, password)
+        .then((userCredential) => {
+          const user = userCredential.user;
+          console.log("User details:", user);
+          push("/dashboard");
+        })
+        .catch((error) => {
+          console.log(error.message);
+          setError(error.message);
+        });
     } catch (error) {
       const firebaseError = error as { message: string };
       setError(firebaseError.message);
@@ -102,12 +83,7 @@ export function LoginForm() {
 
       <div className="text-center">or</div>
       <div className="w-full text-center">
-        <button
-          onClick={handleGoogleSignIn}
-          type="button"
-          disabled={isLoading}
-          className="login-with-google-btn w-[1/2] mx-auto rounded-xl"
-        >
+        <button onClick={handleGoogleSignIn} type="button" disabled={isLoading} className="login-with-google-btn w-[1/2] mx-auto rounded-xl">
           Sign in with Google
         </button>
       </div>

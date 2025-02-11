@@ -30,24 +30,9 @@ export function SignUpForm() {
     const { email, password, name } = event.currentTarget.elements;
 
     try {
-      // 1. Create user in Firebase
       const userCredential = await createUserWithEmailAndPassword(auth, email.value, password.value);
-      // 2. Set the displayName in Firebase profile
       await updateProfile(userCredential.user, { displayName: name.value });
-      // 3. Get the ID token to pass to your backend
-      const token = await userCredential.user.getIdToken();
-
-      // 4. Send token to Python backend
-      await fetch("http://localhost:8000/auth", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ token }),
-      });
-
       console.log("User details:", userCredential.user);
-      // 5. Redirect or do other client-side logic
       push('/dashboard');
     } catch (error) {
       const firebaseError = error as { message: string };
@@ -61,20 +46,7 @@ export function SignUpForm() {
     setIsLoading(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-      // Get token
-      const token = await user.getIdToken();
-
-      // Send token to Python backend
-      await fetch("http://localhost:8000/auth", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ token }),
-      });
-
-      console.log("User details:", user);
+      console.log("User details:", result.user);
       push('/dashboard');
     } catch (error) {
       const firebaseError = error as { message: string };
@@ -86,34 +58,29 @@ export function SignUpForm() {
 
   return (
     <div className="space-y-6">
-      <form onSubmit={onSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="name">Full Name</Label>
-          <Input id="name" name="name" placeholder="John Doe" type="text" required />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" placeholder="name@example.com" type="email" required />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <Input id="password" name="password" type="password" required />
-        </div>
-        {error && <p className="text-red-500">{error}</p>}
-        <Button type="submit" disabled={isLoading} className="w-full">
-          {isLoading && <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />}
-          Create Account
-        </Button>
-      </form>
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="name">Full Name</Label>
+        <Input id="name" name="name" placeholder="John Doe" type="text" required />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <Input id="email" name="email" placeholder="name@example.com" type="email" required />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <Input id="password" name="password" type="password" required />
+      </div>
+      {error && <p className="text-red-500">{error}</p>}
+      <Button type="submit" disabled={isLoading} className="w-full">
+        {isLoading && <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />}
+        Create Account
+      </Button>
+    </form>
 
-      <div className="text-center">or</div>
+    <div className="text-center">or</div>
       <div className="w-full text-center">
-        <button
-          onClick={handleGoogleSignIn}
-          type="button"
-          disabled={isLoading}
-          className="login-with-google-btn w-[1/2] mx-auto rounded-xl"
-        >
+        <button onClick={handleGoogleSignIn} type="button" disabled={isLoading} className="login-with-google-btn w-[1/2] mx-auto rounded-xl">
           Sign in with Google
         </button>
       </div>

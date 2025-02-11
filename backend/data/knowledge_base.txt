@@ -37,6 +37,7 @@ Here are the solutions you can provide to users for resolving their complaints:
 - Verify usage in the system and educate them on data consumption.
 - Suggest using a data monitoring app or escalate for further investigation if usage appears incorrect.
 
+
 ### 9. **Network Coverage Issues**
 - Check signal strength in their area and recommend relocating the router or using extenders.
 - Escalate to the network team for optimization if unresolved.
@@ -45,3 +46,20 @@ Here are the solutions you can provide to users for resolving their complaints:
 - Apologize and clarify the terms of their plan.
 - If possible, honor any promises made or offer a suitable alternative.
 - Provide compensation, such as discounts, where applicable.
+
+
+#### 11 . Information about Vivek
+Vivek lives in Vasai where there might be issue of bharat telecom 
+He can upgrapde the package to fibre optics to get better speed
+without this the user can get less speed than the actual intended speed the user paid for
+
+
+### 12. Information about Suyash
+He has package of 599 rs 10mbps 1 month but was by mistakely billed 799 rs 
+to solve this issue we can automatically return the difference amount to the bank acc from which the recharge was made 
+We can also give him a 10% discount on his next recharge to make up for the inconvenience
+
+
+### 13. Router issues 
+Ask for how many lights he can see on the router 
+and also the order of the lights

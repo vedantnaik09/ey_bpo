@@ -6,6 +6,7 @@ import { format, parseISO, add } from "date-fns"
 import { Card } from "@/components/ui/card"
 import Calendar from "@/components/ui/calendar"
 import RescheduleCalendar from "@/components/ui/reschedulecalendar"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
@@ -17,8 +18,6 @@ import { auth } from "@/firebase/config"
 
 interface Complaint {
   complaint_id: number
-  ticket_id: string
-  is_escalated: boolean
   customer_name: string
   customer_phone_number: string
   complaint_description: string
@@ -29,6 +28,8 @@ interface Complaint {
   scheduled_callback: string | null
   created_at: string
   knowledge_base_solution: string
+  ticket_id: string
+  past_count: number
 }
 
 const API_BASE_URL = "http://localhost:8000"
@@ -69,6 +70,23 @@ const formatToISTWithTime = (dateString: string): string => {
   // Add 5 hours and 30 minutes to convert to IST
   const istDate = add(date, { hours: 5, minutes: 30 })
   return format(istDate, "dd-MM-yyyy HH:mm")
+}
+
+const processComplaints = (complaints: Complaint[]): Complaint[] => {
+  const ticketMap = new Map<string, Complaint>()
+
+  complaints.forEach((complaint) => {
+    const baseTicketId = complaint.ticket_id.trim() // Remove any leading/trailing spaces
+    const key = `${baseTicketId}-${complaint.customer_phone_number}`
+    
+    // Prioritize complaints with higher past_count or most recent entry
+    if (!ticketMap.has(key) || 
+        (complaint.past_count > (ticketMap.get(key)?.past_count || 0))) {
+      ticketMap.set(key, complaint)
+    }
+  })
+
+  return Array.from(ticketMap.values())
 }
 
 export default function DashboardPage() {
@@ -123,7 +141,8 @@ export default function DashboardPage() {
     try {
       const response = await fetch(`${API_BASE_URL}/complaints/`)
       const data: Complaint[] = await response.json()
-      setComplaints(data)
+      const processedData = processComplaints(data)
+      setComplaints(processedData)
     } catch (error) {
       toast.error("Failed to fetch complaints")
     }
@@ -193,25 +212,6 @@ export default function DashboardPage() {
   const resolvedComplaints = complaints.filter((c) => c.status === "resolved").length
   const unresolvedComplaints = totalComplaints - resolvedComplaints
 
-  const toggleEscalation = async (id: number) => {
-    setLoading((prev) => ({ ...prev, [id]: true }))
-    try {
-      const response = await fetch(`${API_BASE_URL}/complaints/${id}/toggleEscalation`, {
-        method: "POST",
-      })
-      if (response.ok) {
-        fetchComplaints()
-        toast.success("Escalation status updated")
-      } else {
-        toast.error("Failed to update escalation status")
-      }
-    } catch (error) {
-      toast.error("Failed to update escalation status")
-    } finally {
-      setLoading((prev) => ({ ...prev, [id]: false }))
-    }
-  }
-
   return (
     <div className="min-h-screen bg-gray-50/50 dark:bg-gray-900/50 pt-24 px-8 pb-8">
       <div className="mb-8">
@@ -260,7 +260,6 @@ export default function DashboardPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Customer</TableHead>
-              <TableHead>Ticket ID</TableHead>
               <TableHead>Phone Number</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Created</TableHead>
@@ -268,20 +267,14 @@ export default function DashboardPage() {
               <TableHead>Sentiment</TableHead>
               <TableHead>Priority</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Escalation</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>Repeat Customer</TableHead>
+              <TableHead >Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {complaints.map((complaint) => (
-              <TableRow
-                key={complaint.complaint_id}
-                className={`group ${complaint.is_escalated ? "hover:bg-red-950/30" : ""}`}
-              >
+              <TableRow key={complaint.complaint_id}>
                 <TableCell className="font-medium">{complaint.customer_name}</TableCell>
-                <TableCell className="font-medium">
-                  #{complaint.ticket_id || complaint.complaint_id.toString().padStart(4, "0")}
-                </TableCell>
                 <TableCell className="font-medium">{complaint.customer_phone_number}</TableCell>
                 <TableCell>{complaint.complaint_description}</TableCell>
                 <TableCell className="whitespace-nowrap">{formatToIST(complaint.created_at)}</TableCell>
@@ -316,20 +309,25 @@ export default function DashboardPage() {
                   )}
                 </TableCell>
                 <TableCell>
-                  <div className="flex justify-center">
-                    <button
-                      onClick={() => toggleEscalation(complaint.complaint_id)}
-                      disabled={loading[complaint.complaint_id]}
-                      className="focus:outline-none"
-                    >
-                      <Flag
-                        className={`h-5 w-5 transition-colors ${complaint.is_escalated
-                            ? "text-red-500 group-hover:fill-red-500"
-                            : "text-gray-400 group-hover:text-red-500 group-hover:fill-red-500"
-                          }`}
-                      />
-                    </button>
-                  </div>
+                  {complaint.past_count > 1 ? (
+                    <div className="flex items-center">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Flag className="h-4 w-4 text-red-500 mr-2" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Ticket ID: {complaint.ticket_id}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <Badge variant="destructive" className="mr-2">
+                        Repeat
+                      </Badge>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-500">New Customer</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   <div className={`flex gap-2 ${complaint.status === "resolved" ? "" : "justify-end"}`}>
@@ -349,7 +347,7 @@ export default function DashboardPage() {
                         size="sm"
                         onClick={() => handleCall(complaint.complaint_id)}
                         disabled={loading[complaint.complaint_id]}
-                        className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 dark:hover:text-white"
+                        className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
                       >
                         <Phone className="h-4 w-4 mr-2" />
                         Call
@@ -361,8 +359,9 @@ export default function DashboardPage() {
                       variant="outline"
                       onClick={() => toggleResolve(complaint.complaint_id)}
                       disabled={loading[complaint.complaint_id]}
-                      className={`border-green-500 text-green-500 hover:bg-green-50 dark:hover:bg-green-950 ${complaint.status !== "resolved" ? "mr-20" : ""
-                        }`}
+                      className={`border-green-500 text-green-500 hover:bg-green-50 dark:hover:bg-green-950 ${
+                        complaint.status !== "resolved" ? "mr-20" : ""
+                      }`}
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
                       {complaint.status !== "resolved" ? "Resolve" : "Mark as unresolved"}

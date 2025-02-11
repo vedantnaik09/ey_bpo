@@ -2,15 +2,15 @@ import Link from "next/link"
 import { Check } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { GradientText } from "@/components/ui/gradient-text"
 
 export default function PricingPage() {
   return (
     <div className="bg-black min-h-screen">
       <div className="container px-4 py-24 mx-auto">
         <div className="text-center mb-16">
-          < GradientText className="text-5xl md:text-7xl font-bold tracking-tight mb-8">
-            Pricing Plans for BPO Excellence</GradientText>
+          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+            Pricing Plans for BPO Excellence
+          </h1>
           <p className="mt-4 text-xl text-gray-400">
             Transform your claims processing workflow with AI-powered automation
           </p>

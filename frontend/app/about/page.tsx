@@ -1,7 +1,6 @@
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Brain, Clock, Heart, TrendingUp } from 'lucide-react'
-import { GradientText } from "@/components/ui/gradient-text"
 
 export default function AboutPage() {
   return (
@@ -9,9 +8,9 @@ export default function AboutPage() {
       <div className="container px-4 py-24 mx-auto">
         {/* Hero Section */}
         <div className="text-center mb-16">
-          <GradientText className="text-4xl md:text-6xl font-bold">
+          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
             Transforming BPO Operations with AI
-          </GradientText>
+          </h1>
           <p className="mt-6 text-xl text-gray-400 max-w-3xl mx-auto">
             At RESOLVR, our mission is to revolutionize BPO operations by leveraging cutting-edge AI technology to enhance efficiency, empower agents, and deliver exceptional customer experiences. We are committed to transforming claims processing workflows into seamless, automated, and scalable solutions.
           </p>
@@ -53,12 +52,13 @@ export default function AboutPage() {
           <p className="text-gray-400 text-center mb-12 max-w-3xl mx-auto">
             Our team consists of five passionate innovators who bring together expertise in AI development, customer service workflows, and operational efficiency. United by our vision, we aim to redefine the future of BPO claims processing.
           </p>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
             {[
+              "Vedant Naik",
               "Vivek Nair",
               "Ravirajsingh Sodha",
               "Suyash Konduskar",
-              "Saumya Desai"
+              "Nishant Golakiya"
             ].map((member) => (
               <div key={member} className="text-center">
                 {/* <div className="w-32 h-32 bg-gray-700 rounded-full mx-auto mb-4"></div> */}
@@ -101,7 +101,7 @@ export default function AboutPage() {
             Discover how RESOLVR is reshaping claims processing. Contact us to learn more about our AI-driven solution and explore how it can elevate your BPO operations.
           </p>
           <div className="flex gap-4 justify-center">
-            <Button className="bg-purple-600 hover:bg-purple-700 hover:text-white">
+            <Button className="bg-purple-600 hover:bg-purple-700">
               Get Started
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>

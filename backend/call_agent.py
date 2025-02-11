@@ -38,7 +38,7 @@ def query_index(index, query):
     return response
 
 # Main logic to load documents and create/load the index
-def main(query):
+def resolve_db(query):
     # Path to the directory containing documents
     persist_dir = './STORAGE'
     data_dir='./data'

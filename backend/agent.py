@@ -60,11 +60,11 @@ class DatabaseManager:
             return {"name": name, "complaint": complaint, "solution":solution,"time": complaint_time}
         else:
             return {"name": "Unknown", "complaint": "No complaint found", "time": "Unknown"}
-    def update_complaint_status(self, phone_number: str, status: str):
+    def update_complaint_status(self, phone_number: str, status: str,complaint_description:str):
         """Update the complaint status from 'pending' to 'resolved'."""
         cursor = self.connect()
-        query = sql.SQL("UPDATE complaints SET status = %s WHERE customer_phone_number = %s")
-        cursor.execute(query, (status, phone_number))
+        query = sql.SQL("UPDATE complaints SET status = %s WHERE customer_phone_number = %s and complaint_description = %s")
+        cursor.execute(query, (status, phone_number,complaint_description))
         self.connection.commit()
         logger.info(f"Complaint status for {phone_number} updated to {status}")
 
@@ -91,7 +91,7 @@ class DatabaseManager:
 # Initialize DatabaseManager
 db_manager = DatabaseManager()
 
-
+from call_agent import resolve_db
 outbound_trunk_id = os.getenv("SIP_OUTBOUND_TRUNK_ID")
 
 
@@ -113,12 +113,14 @@ async def entrypoint(ctx: JobContext):
     print(f"the name  of the user is {complaint_details['name']}")
 
     instructions = (
-        f"You are a BPO client complaint resolver agent for the Company called GhejMaxxers. Your interface with the user will be voice. "
+        f"You are a BPO client complaint resolver agent for a broadband company called Bharat Telecom. Your interface with the user will be voice. "
         f"You will call the client based on the priority order and the phone number provided. " 
         f"You are suppposed to be a polite agent"
-        f"You are an Indian agent so you have talk in Hindi fluently"
+        f"You can speak all languages fluently u should start the conversation with hindi and then based on the language user speaks you should speak that language fluently"
+        # f"You are an Indian Agent so initially you would speak in Hindi and based on the language of the user you will also speak to him in the same language"
         f"The customer's name is {complaint_details['name']}. the complaint is {complaint_details['complaint']}. the time of the complaint is {complaint_details['time']}.Resolve their complaint and provide assistance as needed."
         f"the Initial Solution provided by the database is {complaint_details['solution']}."
+        f"if user asks for questions whose answer is not mentioned in the initial solution use read knowledge base function tool  to get entire knowledge base and before searching tell him to please wait "
         "provide this solution and listen to their queries"
         f"use function calling to get solution during conversation realtime from the knowledge base"
         
@@ -193,33 +195,32 @@ class CallActions(llm.FunctionContext):
         await self.hangup()
 
     @llm.ai_callable()
-    async def resolve_complaint(self, complaint: Annotated[str, "Details of the user's complaint"]):
+    async def resolve_complaint(self, complaint: Annotated[str, "Call this function to update the status of the complaint of the user "]):
         """Called to resolve a user's complaint by providing relevant information."""
+        phone_number = self.participant.identity 
+        complaint_details=db_manager.get_complaint_details(phone_number)
+        complaint_description=complaint_details['complaint']
         logger.info(f"Resolving complaint for {self.participant.identity}: {complaint}")
         
         # Update the complaint status in the database to "resolved"
-        phone_number = self.participant.identity  # Assuming the participant identity is the phone number
-        db_manager.update_complaint_status(phone_number, "resolved")
+         # Assuming the participant identity is the phone number
+        db_manager.update_complaint_status(phone_number, "resolved",complaint_description)
         
         return "Your complaint has been noted. We will resolve it promptly."
 
     @llm.ai_callable()
-    async def search_knowledge_base(self, query: Annotated[str, "Query to search in the knowledge base"]):
+    async def search_knowledge_base(self, query: Annotated[str, "Query to search in the knowledge base the question user is asking on the call you want to check"]):
         """Called to search the knowledge base for user queries."""
         logger.info(f"Searching knowledge base for query: {query}")
         
         # Read the knowledge base from the file
-        knowledge_base = read_knowledge_base("knowledge_base.txt")
+        solution = resolve_db(query)
         
         # Simulate a search by checking if any knowledge base entry matches the complaint
-        response = "No relevant information found."
-        for line in knowledge_base:
-            if any(keyword in line.lower() for keyword in query.lower().split()):
-                response = line
-                break
         
-        return response
-
+        
+        return str(solution)
+    
     @llm.ai_callable()
     async def confirm_resolution(self):
         """Called to confirm the resolution of the user's complaint."""
@@ -232,11 +233,7 @@ class CallActions(llm.FunctionContext):
         logger.info(f"Detected answering machine for {self.participant.identity}")
         await self.hangup()
 
-def read_knowledge_base(file_path: str) -> list:
-    """Read the knowledge base from the text file."""
-    with open(file_path, "r") as file:
-        lines = file.readlines()
-    return [line.strip() for line in lines]
+
 def run_multimodal_agent(
     ctx: JobContext, participant: rtc.RemoteParticipant, instructions: str
 ):
