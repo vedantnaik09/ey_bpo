@@ -297,14 +297,14 @@ class DatabaseManager:
         if conn:
             try:
                 query = """
-                    SELECT 
-                        complaint_id, customer_name, customer_phone_number,
-                        complaint_description, sentiment_score, urgency_score,
-                        priority_score, status, scheduled_callback,
-                        created_at, knowledge_base_solution,ticket_id,past_count
-                    FROM complaints 
-                    ORDER BY priority_score DESC, created_at DESC
-                """
+                                    SELECT 
+                                        created_at, customer_name, customer_phone_number, complaint_id, complaint_description,
+                                        sentiment_score, urgency_score, politeness_score,
+                                        priority_score, scheduled_callback, status, ticket_id, past_count,
+                                        knowledge_base_solution, complaint_category
+                                    FROM complaints 
+                                    ORDER BY priority_score DESC, created_at DESC
+                                """
                 return pd.read_sql_query(query, conn)
             finally:
                 conn.close()

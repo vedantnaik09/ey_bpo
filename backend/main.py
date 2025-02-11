@@ -44,12 +44,15 @@ class ComplaintResponse(ComplaintBase):
     complaint_id: int
     sentiment_score: float
     urgency_score: float
+    politeness_score: float
     priority_score: float
     status: str
     scheduled_callback: Optional[datetime]
     created_at: datetime
-    ticket_id : Optional[str]
-    past_count :Optional[int]
+    ticket_id: Optional[str]
+    past_count: Optional[int]
+    knowledge_base_solution: Optional[str]
+    complaint_category: Optional[str]
     # knowledge_base_solution: str
 
 class ScheduleCallback(BaseModel):
