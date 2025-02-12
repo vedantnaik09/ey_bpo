@@ -146,6 +146,42 @@ export default function DashboardPage() {
   const [selectedDomain, setSelectedDomain] = useState<string>("all");
   const [userRole, setUserRole] = useState<string>("");
   const [userDomain, setUserDomain] = useState<string>("");
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        push("/")
+      } else {
+        const token = await user.getIdToken(true);
+        localStorage.setItem("firebaseToken", token);
+        const role = localStorage.getItem("userRole");
+        const domain = localStorage.getItem("userDomain");
+        setUserRole(role || "");
+        setUserDomain(domain || "");
+        if (role === "employee" && domain) {
+          setSelectedDomain(domain);
+        }
+        setIsAuthenticated(true); // user is logged in, safe to call fetchComplaints
+      }
+    })
+
+    return () => unsubscribe()
+  }, [push])
+
+  // Only fetch complaints if user is logged in
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchComplaints();
+    }
+  }, [isAuthenticated]);
+
+  // Also watch selectedDomain and fetch if authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchComplaints();
+    }
+  }, [selectedDomain, isAuthenticated])
 
   useEffect(() => {
     // Get user role and domain from localStorage
@@ -161,20 +197,11 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    fetchComplaints()
-  }, [selectedDomain])
-
-  useEffect(() => {
     if (complaints.length > 0) {
       const todayComplaints = getDayComplaints(new Date())
       setSelectedComplaint(todayComplaints)
     }
   }, [complaints]) // This will run whenever complaints are loaded or updated
-
-  // Keep your existing useEffect for fetching complaints
-  useEffect(() => {
-    fetchComplaints()
-  }, [])
 
   const handleOpenReschedule = (id: number) => {
     setRescheduleComplaintId(id)
