@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Icons } from "@/components/icons";
+import axios from "axios";
 
 interface FormElements extends HTMLFormControlsCollection {
   email: HTMLInputElement;
@@ -29,16 +30,20 @@ export function LoginForm() {
       const user = result.user;
       const token = await user.getIdToken();
 
-      // 1. Send token to Python backend
-      await fetch("YOUR_PYTHON_BACKEND_URL/auth", {
-        method: "POST",
+      // Send token to Python backend using axios
+      const response = await axios.post("http://localhost:8000/auth", { token }, {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ token }),
       });
 
-      // 2. Then navigate or do any front-end logic
+      const data = response.data;
+
+      // Store email, role, and domain in local storage
+      localStorage.setItem("userEmail", data.email);
+      localStorage.setItem("userRole", data.role);
+      localStorage.setItem("userDomain", data.domain);
+
       console.log("User details:", user);
       push("/dashboard");
     } catch (error) {
@@ -60,17 +65,22 @@ export function LoginForm() {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      // 1. Get the ID token
+      // Get the ID token
       const token = await user.getIdToken();
 
-      // 2. Send token to Python backend
-      await fetch("http://localhost:8000/auth", {
-        method: "POST",
+      // Send token to Python backend using axios
+      const response = await axios.post("http://localhost:8000/auth", { token }, {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ token }),
       });
+
+      const data = response.data;
+
+      // Store email, role, and domain in local storage
+      localStorage.setItem("userEmail", data.email);
+      localStorage.setItem("userRole", data.role);
+      localStorage.setItem("userDomain", data.domain);
 
       console.log("User details:", user);
       push("/dashboard");

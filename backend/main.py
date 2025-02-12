@@ -212,12 +212,13 @@ async def auth_user(token_data: TokenData):
         if not email:
             raise HTTPException(
                 status_code=400, detail="No email found in token")
-        success, role = db.upsert_user(email, role="employee")
+        success, role, domain = db.upsert_user(email, role="employee")
         if success:
             return {
                 "message": "User upserted successfully",
                 "email": email,
-                "role": role
+                "role": role,
+                "domain": domain
             }
         else:
             raise HTTPException(

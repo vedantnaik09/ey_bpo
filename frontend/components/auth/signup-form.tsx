@@ -1,12 +1,13 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
 import { createUserWithEmailAndPassword, updateProfile, signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "@/firebase/config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Icons } from "@/components/icons";
+import axios from "axios";
 
 interface FormElements extends HTMLFormControlsCollection {
   email: HTMLInputElement;
@@ -37,18 +38,20 @@ export function SignUpForm() {
       // 3. Get the ID token to pass to your backend
       const token = await userCredential.user.getIdToken();
 
-      // 4. Send token to Python backend
-      await fetch("http://localhost:8000/auth", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ token }),
+      // 4. Send token to Python backend using axios
+      const response = await axios.post("http://localhost:8000/auth", { token }, {
+        headers: { "Content-Type": "application/json" }
       });
+      const data = response.data;
+
+      // Store email, role, and domain in local storage
+      localStorage.setItem("userEmail", data.email);
+      localStorage.setItem("userRole", data.role);
+      localStorage.setItem("userDomain", data.domain);
 
       console.log("User details:", userCredential.user);
       // 5. Redirect or do other client-side logic
-      push('/dashboard');
+      push("/dashboard");
     } catch (error) {
       const firebaseError = error as { message: string };
       setError(firebaseError.message);
@@ -65,17 +68,19 @@ export function SignUpForm() {
       // Get token
       const token = await user.getIdToken();
 
-      // Send token to Python backend
-      await fetch("http://localhost:8000/auth", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ token }),
+      // Send token to Python backend using axios
+      const response = await axios.post("http://localhost:8000/auth", { token }, {
+        headers: { "Content-Type": "application/json" }
       });
+      const data = response.data;
+
+      // Store email, role, and domain in local storage
+      localStorage.setItem("userEmail", data.email);
+      localStorage.setItem("userRole", data.role);
+      localStorage.setItem("userDomain", data.domain);
 
       console.log("User details:", user);
-      push('/dashboard');
+      push("/dashboard");
     } catch (error) {
       const firebaseError = error as { message: string };
       setError(firebaseError.message);

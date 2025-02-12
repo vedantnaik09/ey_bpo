@@ -454,18 +454,18 @@ class DatabaseManager:
             finally:
                 conn.close()
         return None
-    def upsert_user(self, email: str, role: str = "employee") -> Tuple[bool, str]:
+    def upsert_user(self, email: str, role: str = "employee") -> Tuple[bool, str, str]:
         """
         Checks if user exists by email. If not, inserts a new user with 'role'.
-        Returns (success_bool, role) tuple.
+        Returns (success_bool, role, domain) tuple.
         """
         conn = self.connect()
         if not conn:
-            return False, ""
+            return False, "", ""
         try:
             with conn.cursor() as cursor:
                 # Check if user already exists
-                cursor.execute("SELECT user_id, role FROM users WHERE email = %s", (email,))
+                cursor.execute("SELECT user_id, role, domain FROM users WHERE email = %s", (email,))
                 existing = cursor.fetchone()
                 if not existing:
                     # Insert new user; domain will default to 'none'
@@ -477,15 +477,17 @@ class DatabaseManager:
                     new_user_id = cursor.fetchone()[0]
                     print(f"Created new user with ID: {new_user_id} | Email: {email}")
                     return_role = role
+                    return_domain = 'none'  # Default domain for new users
                 else:
-                    # Return existing user's role
+                    # Return existing user's role and domain
                     return_role = existing[1]
+                    return_domain = existing[2]
                     print(f"User with email {email} already exists. Skipping creation.")
                 conn.commit()
-                return True, return_role
+                return True, return_role, return_domain
         except Exception as e:
             print(f"Error upserting user: {e}")
-            return False, ""
+            return False, "", ""
         finally:
             conn.close()
     def check_db_connection(self) -> bool:
