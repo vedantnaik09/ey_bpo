@@ -454,6 +454,109 @@ class DatabaseManager:
             finally:
                 conn.close()
         return None
+    def upsert_user(self, email: str, role: str = "employee") -> Tuple[bool, str]:
+        """
+        Checks if user exists by email. If not, inserts a new user with 'role'.
+        Returns (success_bool, role) tuple.
+        """
+        conn = self.connect()
+        if not conn:
+            return False, ""
+        try:
+            with conn.cursor() as cursor:
+                # Check if user already exists
+                cursor.execute("SELECT user_id, role FROM users WHERE email = %s", (email,))
+                existing = cursor.fetchone()
+                if not existing:
+                    # Insert new user; domain will default to 'none'
+                    cursor.execute("""
+                        INSERT INTO users (user_id, email, role)
+                        VALUES (uuid_generate_v4(), %s, %s)
+                        RETURNING user_id
+                    """, (email, role))
+                    new_user_id = cursor.fetchone()[0]
+                    print(f"Created new user with ID: {new_user_id} | Email: {email}")
+                    return_role = role
+                else:
+                    # Return existing user's role
+                    return_role = existing[1]
+                    print(f"User with email {email} already exists. Skipping creation.")
+                conn.commit()
+                return True, return_role
+        except Exception as e:
+            print(f"Error upserting user: {e}")
+            return False, ""
+        finally:
+            conn.close()
+    def check_db_connection(self) -> bool:
+        """Returns True if the DB connection succeeds."""
+        conn = self.connect()
+        if conn:
+            conn.close()
+            return True
+        return False
+    
+    def get_user_by_email(self, email: str) -> pd.DataFrame:
+        """
+        Returns a DataFrame with the user row(s) that match the given email.
+        If no row is found, the DataFrame will be empty.
+        """
+        conn = self.connect()
+        if not conn:
+            return pd.DataFrame()  # or handle error
+        try:
+            query = """
+                SELECT user_id, email, role, domain
+                FROM users
+                WHERE email = %s
+            """
+            return pd.read_sql_query(query, conn, params=(email,))
+        finally:
+            conn.close()
+    def get_all_users(self) -> pd.DataFrame:
+        """Returns all users as a pandas DataFrame."""
+        conn = self.connect()
+        if conn:
+            try:
+                query = """
+                    SELECT user_id, email, role, domain
+                    FROM users
+                    ORDER BY created_at DESC
+                """
+                return pd.read_sql_query(query, conn)
+            finally:
+                conn.close()
+        return pd.DataFrame()
+    def update_user_domain(self, email: str, new_domain: str) -> bool:
+        """
+        Updates the 'domain' for a given user by email.
+        In your FastAPI route, ensure only admins can call this.
+        """
+        conn = self.connect()
+        if not conn:
+            return False
+        try:
+            with conn.cursor() as cursor:
+                # Check if user exists
+                cursor.execute("SELECT user_id FROM users WHERE email = %s", (email,))
+                user_row = cursor.fetchone()
+                if not user_row:
+                    print(f"No user found with email: {email}")
+                    return False
+                # Update domain
+                cursor.execute("""
+                    UPDATE users
+                    SET domain = %s
+                    WHERE email = %s
+                """, (new_domain, email))
+            conn.commit()
+            print(f"Updated domain for {email} to '{new_domain}'.")
+            return True
+        except Exception as e:
+            print(f"Error updating user domain: {e}")
+            return False
+        finally:
+            conn.close()
 
 
         

@@ -204,6 +204,7 @@ async def auth_user(token_data: TokenData):
     """
     Verifies a Firebase ID token and upserts the user (default role='employee')
     into the database if not already present.
+    Returns user email and role.
     """
     try:
         decoded_token = auth.verify_id_token(token_data.token)
@@ -211,9 +212,13 @@ async def auth_user(token_data: TokenData):
         if not email:
             raise HTTPException(
                 status_code=400, detail="No email found in token")
-        success = db.upsert_user(email, role="employee")
+        success, role = db.upsert_user(email, role="employee")
         if success:
-            return {"message": "User upserted successfully", "email": email}
+            return {
+                "message": "User upserted successfully",
+                "email": email,
+                "role": role
+            }
         else:
             raise HTTPException(
                 status_code=500, detail="Could not upsert user into DB")
