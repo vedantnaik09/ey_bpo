@@ -29,6 +29,7 @@ export function LoginForm() {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       const token = await user.getIdToken();
+      localStorage.setItem("firebaseToken", token); // Add this line before the axios call
 
       // Send token to Python backend using axios
       const response = await axios.post("http://localhost:8000/auth", { token }, {
@@ -67,6 +68,7 @@ export function LoginForm() {
       const user = userCredential.user;
       // Get the ID token
       const token = await user.getIdToken();
+      localStorage.setItem("firebaseToken", token); // Add this line before the axios call
 
       // Send token to Python backend using axios
       const response = await axios.post("http://localhost:8000/auth", { token }, {

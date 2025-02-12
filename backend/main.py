@@ -304,5 +304,38 @@ def change_domain( email: str = Body(...),
 async def root():
     return {"message": "Welcome to the BPO Complaint System API"}
 
+# Add this new route
+@app.get("/complaints/by-category/{category}", response_model=List[ComplaintResponse])
+async def get_complaints_by_category(
+    category: str, 
+    current_user: CurrentUser = Depends(get_current_user)
+):
+    """Get complaints filtered by category. Admins can see all, employees only their domain."""
+    try:
+        df = db.get_complaints()
+        
+        # If user is not admin, they can only see complaints from their domain
+        if current_user.role != "admin":
+            if current_user.domain != category:
+                raise HTTPException(
+                    status_code=403, 
+                    detail="Access forbidden for this category"
+                )
+            df = df[df['complaint_category'] == category]
+        elif category != "all":  # Admin filtering specific category
+            df = df[df['complaint_category'] == category]
+
+        return [
+            {
+                **row.to_dict(),
+                'complaint_id': int(row['complaint_id']),
+                'scheduled_callback': row['scheduled_callback'].isoformat() 
+                    if pd.notna(row['scheduled_callback']) else None
+            }
+            for _, row in df.iterrows()
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

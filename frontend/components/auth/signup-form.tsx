@@ -37,6 +37,7 @@ export function SignUpForm() {
       await updateProfile(userCredential.user, { displayName: name.value });
       // 3. Get the ID token to pass to your backend
       const token = await userCredential.user.getIdToken();
+      localStorage.setItem("firebaseToken", token); // Add this line before the axios call
 
       // 4. Send token to Python backend using axios
       const response = await axios.post("http://localhost:8000/auth", { token }, {
@@ -67,6 +68,7 @@ export function SignUpForm() {
       const user = result.user;
       // Get token
       const token = await user.getIdToken();
+      localStorage.setItem("firebaseToken", token); // Add this line before the axios call
 
       // Send token to Python backend using axios
       const response = await axios.post("http://localhost:8000/auth", { token }, {

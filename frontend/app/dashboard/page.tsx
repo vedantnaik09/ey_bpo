@@ -7,6 +7,8 @@ import { Card } from "@/components/ui/card"
 import Calendar from "@/components/ui/calendar"
 import RescheduleCalendar from "@/components/ui/reschedulecalendar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import axiosManagerInstance from "@/utils/axiosManager";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
@@ -30,7 +32,22 @@ interface Complaint {
   knowledge_base_solution: string
   ticket_id: string
   past_count: number
+  complaint_category: string 
 }
+
+// Add this interface for domain options
+interface DomainOption {
+  value: string;
+  label: string;
+}
+
+const domainOptions: DomainOption[] = [
+  { value: "all", label: "All Categories" },
+  { value: "Technical Support", label: "Technical Support" },
+  { value: "Billing", label: "Billing" },
+  { value: "New Connection", label: "New Connection" },
+  { value: "Added Service and Bundle offers", label: "Added Service and Bundle offers" },
+];
 
 const API_BASE_URL = "http://localhost:8000"
 
@@ -93,9 +110,23 @@ export default function DashboardPage() {
   const { push } = useRouter()
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         push("/")
+      } else {
+        // Get fresh token when component mounts
+        const token = await user.getIdToken(true);
+        localStorage.setItem("firebaseToken", token);
+        // Get user role and domain from localStorage
+        const role = localStorage.getItem("userRole");
+        const domain = localStorage.getItem("userDomain");
+        setUserRole(role || "");
+        setUserDomain(domain || "");
+        
+        // If user is employee, set their domain as selected domain
+        if (role === "employee" && domain) {
+            setSelectedDomain(domain);
+        }
       }
     })
 
@@ -112,10 +143,26 @@ export default function DashboardPage() {
     top: number
     left: number
   } | null>(null)
+  const [selectedDomain, setSelectedDomain] = useState<string>("all");
+  const [userRole, setUserRole] = useState<string>("");
+  const [userDomain, setUserDomain] = useState<string>("");
+
+  useEffect(() => {
+    // Get user role and domain from localStorage
+    const role = localStorage.getItem("userRole");
+    const domain = localStorage.getItem("userDomain");
+    setUserRole(role || "");
+    setUserDomain(domain || "");
+    
+    // If user is employee, set their domain as selected domain
+    if (role === "employee" && domain) {
+      setSelectedDomain(domain);
+    }
+  }, []);
 
   useEffect(() => {
     fetchComplaints()
-  }, [])
+  }, [selectedDomain])
 
   useEffect(() => {
     if (complaints.length > 0) {
@@ -139,52 +186,46 @@ export default function DashboardPage() {
 
   const fetchComplaints = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/complaints/`)
-      const data: Complaint[] = await response.json()
-      const processedData = processComplaints(data)
-      setComplaints(processedData)
+      const response = await axiosManagerInstance.get(
+        `/complaints/by-category/${selectedDomain}`
+      );
+      const processedData = processComplaints(response.data);
+      setComplaints(processedData);
     } catch (error) {
-      toast.error("Failed to fetch complaints")
+      console.error("Error fetching complaints:", error);
+      toast.error("Failed to fetch complaints");
     }
-  }
+  };
 
   const handleCall = async (id: number) => {
-    setLoading((prev) => ({ ...prev, [id]: true }))
+    setLoading((prev) => ({ ...prev, [id]: true }));
     try {
-      const response = await fetch(`${API_BASE_URL}/complaints/${id}/resolve`, {
-        method: "POST",
-      })
-      if (response.ok) {
-        fetchComplaints()
-        toast.success("Calling User")
-      } else {
-        toast.error("Failed to call")
-      }
+        const response = await axiosManagerInstance.post(`/complaints/${id}/resolve`);
+        if (response.status === 200) {
+            fetchComplaints();
+            toast.success("Calling User");
+        }
     } catch (error) {
-      toast.error("Failed to call")
+        toast.error("Failed to call");
     } finally {
-      setLoading((prev) => ({ ...prev, [id]: false }))
+        setLoading((prev) => ({ ...prev, [id]: false }));
     }
-  }
+};
 
-  const toggleResolve = async (id: number) => {
-    setLoading((prev) => ({ ...prev, [id]: true }))
+const toggleResolve = async (id: number) => {
+    setLoading((prev) => ({ ...prev, [id]: true }));
     try {
-      const response = await fetch(`${API_BASE_URL}/complaints/${id}/toggleResolve`, {
-        method: "POST",
-      })
-      if (response.ok) {
-        fetchComplaints()
-        toast.success("Complaint marked as resolved")
-      } else {
-        toast.error("Failed to resolve complaint")
-      }
+        const response = await axiosManagerInstance.post(`/complaints/${id}/toggleResolve`);
+        if (response.status === 200) {
+            fetchComplaints();
+            toast.success("Complaint marked as resolved");
+        }
     } catch (error) {
-      toast.error("Failed to resolve complaint")
+        toast.error("Failed to resolve complaint");
     } finally {
-      setLoading((prev) => ({ ...prev, [id]: false }))
+        setLoading((prev) => ({ ...prev, [id]: false }));
     }
-  }
+};
 
   const getDayComplaints = (day: Date): Complaint[] => {
     const formattedDay = format(day, "yyyy-MM-dd")
@@ -211,6 +252,31 @@ export default function DashboardPage() {
   const totalComplaints = complaints.length
   const resolvedComplaints = complaints.filter((c) => c.status === "resolved").length
   const unresolvedComplaints = totalComplaints - resolvedComplaints
+
+  // Add this JSX right before the complaints table
+  const renderDomainFilter = () => {
+    if (userRole !== "admin") return null;
+
+    return (
+      <div className="mb-4">
+        <Select
+          value={selectedDomain}
+          onValueChange={(value) => setSelectedDomain(value)}
+        >
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Select Category" />
+          </SelectTrigger>
+          <SelectContent>
+            {domainOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50/50 dark:bg-gray-900/50 pt-24 px-8 pb-8">
@@ -255,11 +321,15 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Add domain filter */}
+      {renderDomainFilter()}
+
       <Card className="bg-white dark:bg-gray-800 mb-8">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Customer</TableHead>
+              <TableHead>Category</TableHead> {/* Add this line */}
               <TableHead>Phone Number</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Created</TableHead>
@@ -275,6 +345,7 @@ export default function DashboardPage() {
             {complaints.map((complaint) => (
               <TableRow key={complaint.complaint_id}>
                 <TableCell className="font-medium">{complaint.customer_name}</TableCell>
+                <TableCell className="font-medium">{complaint.complaint_category}</TableCell> {/* Add this line */}
                 <TableCell className="font-medium">{complaint.customer_phone_number}</TableCell>
                 <TableCell>{complaint.complaint_description}</TableCell>
                 <TableCell className="whitespace-nowrap">{formatToIST(complaint.created_at)}</TableCell>
