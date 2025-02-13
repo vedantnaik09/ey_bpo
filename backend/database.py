@@ -29,7 +29,7 @@ class DatabaseManager:
         
     def create_tables(self):
         """
-        Creates the 'users' and 'complaints' tables if they do not exist.
+        Creates all necessary tables if they do not exist.
         Ensures 'uuid-ossp' is enabled for UUID generation.
         """
         conn = self.connect()
@@ -38,7 +38,7 @@ class DatabaseManager:
             return
         try:
             with conn.cursor() as cursor:
-                # Enable the uuid-ossp extension for uuid_generate_v4()
+                # Enable required extensions
                 cursor.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";')
 
                 # 1) Create 'users' table using UUID
@@ -55,7 +55,7 @@ class DatabaseManager:
 
                 # 2) Create 'complaints' table
                 cursor.execute("""
-                    CREATE TABLE complaints(
+                    CREATE TABLE IF NOT EXISTS complaints(
                     complaint_id SERIAL PRIMARY KEY,
                     customer_name TEXT NOT NULL,
                     customer_phone_number TEXT NOT NULL,
@@ -74,8 +74,31 @@ class DatabaseManager:
                 );
                 """)
 
+                # 3) Create 'calls' table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS calls (
+                        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                        caller VARCHAR(255) NOT NULL,
+                        receiver VARCHAR(255) NOT NULL,
+                        start_time TIMESTAMP NOT NULL DEFAULT NOW(),
+                        end_time TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT NOW()
+                    );
+                """)
+
+                # 4) Create 'messages' table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS messages (
+                        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                        call_id UUID REFERENCES calls(id) ON DELETE CASCADE,
+                        sender VARCHAR(255) NOT NULL,
+                        message TEXT NOT NULL,
+                        timestamp TIMESTAMP NOT NULL DEFAULT NOW()
+                    );
+                """)
+
             conn.commit()
-            print("Tables ensured (created if not existed).")
+            print("All tables ensured (created if not existed).")
         except Exception as e:
             print(f"Error creating tables: {e}")
         finally:
@@ -563,10 +586,91 @@ class DatabaseManager:
         finally:
             conn.close()
         
-        
-# manager=DatabaseManager()
-# complaint_descriptions=manager.get_complaint_descriptions("+917769915068")
-# from ai_analyzer import ComplaintAnalyzer
-# co=ComplaintAnalyzer()
-# count=co.count_similar_complaints(complaint_descriptions)
-# print(count)
+    def get_calls_with_messages(self) -> pd.DataFrame:
+        """Get all calls with their associated messages/transcripts"""
+        conn = self.connect()
+        if conn:
+            try:
+                query = """
+                    SELECT 
+                        c.id as call_id,
+                        c.caller,
+                        c.receiver,
+                        c.start_time,
+                        c.end_time,
+                        c.created_at,
+                        json_agg(json_build_object(
+                            'message_id', m.id,
+                            'message', m.message,
+                            'sender', m.sender,
+                            'timestamp', m.timestamp
+                        )) as messages
+                    FROM calls c
+                    LEFT JOIN messages m ON c.id = m.call_id
+                    GROUP BY c.id
+                    ORDER BY c.created_at DESC
+                """
+                return pd.read_sql_query(query, conn)
+            finally:
+                conn.close()
+        return pd.DataFrame()
+
+    def add_call(self, caller: str, receiver: str) -> Optional[str]:
+        """Add a new call and return its ID"""
+        conn = self.connect()
+        if conn:
+            try:
+                with conn.cursor() as cursor:
+                    cursor.execute("""
+                        INSERT INTO calls (caller, receiver)
+                        VALUES (%s, %s)
+                        RETURNING id
+                    """, (caller, receiver))
+                    call_id = cursor.fetchone()[0]
+                    conn.commit()
+                    return str(call_id)
+            except Exception as e:
+                print(f"Error adding call: {e}")
+                return None
+            finally:
+                conn.close()
+        return None
+
+    def update_call_end(self, call_id: str) -> bool:
+        """Update call end time"""
+        conn = self.connect()
+        if conn:
+            try:
+                with conn.cursor() as cursor:
+                    cursor.execute("""
+                        UPDATE calls
+                        SET end_time = NOW()
+                        WHERE id = %s
+                    """, (call_id,))
+                    conn.commit()
+                    return True
+            except Exception as e:
+                print(f"Error updating call end: {e}")
+                return False
+            finally:
+                conn.close()
+        return False
+
+    def add_message(self, call_id: str, sender: str, message: str) -> bool:
+        """Add a message/transcript to a call"""
+        conn = self.connect()
+        if conn:
+            try:
+                with conn.cursor() as cursor:
+                    cursor.execute("""
+                        INSERT INTO messages (call_id, sender, message)
+                        VALUES (%s, %s, %s)
+                    """, (call_id, sender, message))
+                    conn.commit()
+                    return True
+            except Exception as e:
+                print(f"Error adding message: {e}")
+                return False
+            finally:
+                conn.close()
+        return False

@@ -364,5 +364,45 @@ async def update_user(
         return {"message": "User updated successfully"}
     raise HTTPException(status_code=400, detail="Failed to update user")
 
+@app.get("/calls")
+async def get_calls(current_user: CurrentUser = Depends(get_current_user)):
+    db = DatabaseManager()
+    calls_df = db.get_calls_with_messages()
+    return calls_df.to_dict(orient="records")
+
+@app.post("/calls")
+async def create_call(
+    call: dict,
+    current_user: CurrentUser = Depends(get_current_user)
+):
+    db = DatabaseManager()
+    call_id = db.add_call(call["caller"], call["receiver"])
+    if not call_id:
+        raise HTTPException(status_code=500, detail="Failed to create call")
+    return {"call_id": call_id}
+
+@app.put("/calls/{call_id}/end")
+async def end_call(
+    call_id: str,
+    current_user: CurrentUser = Depends(get_current_user)
+):
+    db = DatabaseManager()
+    success = db.update_call_end(call_id)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to update call")
+    return {"success": True}
+
+@app.post("/calls/{call_id}/messages")
+async def add_message(
+    call_id: str,
+    message: dict,
+    current_user: CurrentUser = Depends(get_current_user)
+):
+    db = DatabaseManager()
+    success = db.add_message(call_id, message["sender"], message["message"])
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to add message")
+    return {"success": True}
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

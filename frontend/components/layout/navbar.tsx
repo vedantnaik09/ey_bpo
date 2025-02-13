@@ -6,11 +6,14 @@ import { Phone, LogIn, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { auth } from "@/firebase/config";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
+import { usePathname } from "next/navigation";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -20,6 +23,12 @@ export function Navbar() {
     
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
+      if (user) {
+        const role = localStorage.getItem("userRole");
+        setUserRole(role);
+      } else {
+        setUserRole(null);
+      }
     });
 
     return () => {
@@ -45,20 +54,60 @@ export function Navbar() {
           </div>
 
           <div className="flex-1 hidden md:flex items-center justify-center gap-8">
-          {user && (
-              <Link href="/dashboard" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
-                Dashboard
-              </Link>
+            {user && (
+              <>
+                <Link 
+                  href="/dashboard" 
+                  className={`text-sm font-medium transition-colors ${
+                    pathname === "/dashboard"
+                      ? "text-purple-600 dark:text-purple-400"
+                      : "text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400"
+                  }`}
+                >
+                  Dashboard
+                </Link>
+
+                <Link 
+                      href="/admin/calls"
+                      className={`text-sm font-medium transition-colors ${
+                        pathname === "/admin/calls"
+                          ? "text-purple-600 dark:text-purple-400"
+                          : "text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400"
+                      }`}
+                    >
+                      Calls
+                </Link>
+
+                {userRole === "admin" && (
+                  <>
+                    <Link 
+                      href="/admin/users"
+                      className={`text-sm font-medium transition-colors ${
+                        pathname === "/admin/users"
+                          ? "text-purple-600 dark:text-purple-400"
+                          : "text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400"
+                      }`}
+                    >
+                      Users
+                    </Link>
+                  </>
+                )}
+              </>
             )}
-            <Link href="/features" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
-              Features
-            </Link>
-            <Link href="/pricing" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
-              Pricing
-            </Link>
-            <Link href="/about" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
-              About
-            </Link>
+
+            {!user && (
+              <>
+                <Link href="/features" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
+                  Features
+                </Link>
+                <Link href="/pricing" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
+                  Pricing
+                </Link>
+                <Link href="/about" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors">
+                  About
+                </Link>
+              </>
+            )}
           </div>
 
           <div className="flex-1 flex items-center justify-end gap-4">
