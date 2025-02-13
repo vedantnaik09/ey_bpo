@@ -59,7 +59,12 @@ class ScheduleCallback(BaseModel):
     complaint_id: int
     callback_time: datetime
 
-
+# Add these new Pydantic models after the existing models
+class UserUpdate(BaseModel):
+    email: str
+    full_name: str
+    role: str
+    domain: str
 
 @app.post("/complaints/", response_model=ComplaintResponse)
 async def create_complaint(complaint: ComplaintBase):
@@ -209,23 +214,14 @@ async def auth_user(token_data: TokenData):
     try:
         decoded_token = auth.verify_id_token(token_data.token)
         email = decoded_token.get("email")
-        if not email:
-            raise HTTPException(
-                status_code=400, detail="No email found in token")
-        success, role, domain = db.upsert_user(email, role="employee")
+        name = decoded_token.get("name", "")  # Get name from token
+        
+        success, role, domain = db.upsert_user(email, name)
         if success:
-            return {
-                "message": "User upserted successfully",
-                "email": email,
-                "role": role,
-                "domain": domain
-            }
-        else:
-            raise HTTPException(
-                status_code=500, detail="Could not upsert user into DB")
+            return {"email": email, "role": role, "domain": domain}
+        raise HTTPException(status_code=500, detail="Failed to create/update user")
     except ValueError as e:
-        raise HTTPException(
-            status_code=401, detail=f"Token verification failed: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
 @app.get("/health/db")
 async def health_db():
     """Check DB connectivity; returns 200 if reachable, 503 otherwise."""
@@ -235,14 +231,18 @@ async def health_db():
         raise HTTPException(
             status_code=503, detail="Database is not reachable.")
 class UserResponse(BaseModel):
-    user_id: int
+    user_id: str  # Changed from int to str to handle UUID
     email: str
+    full_name: str
     role: str
+    domain: str
 @app.get("/users", response_model=List[UserResponse])
 async def get_users():
     """Fetch all users from the database."""
     df = db.get_all_users()
-    # Convert each row to a dict
+    # Convert UUID objects to strings in the DataFrame
+    if 'user_id' in df.columns:
+        df['user_id'] = df['user_id'].astype(str)
     return df.to_dict("records")
 class CurrentUser(BaseModel):
     email: str
@@ -336,6 +336,33 @@ async def get_complaints_by_category(
         ]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# Add these new routes before the last line (if __name__ == "__main__":)
+
+@app.put("/users/{email}", dependencies=[Depends(get_current_user)])
+async def update_user(
+    email: str,
+    user_update: UserUpdate,
+    current_user: CurrentUser = Depends(get_current_user)
+):
+    """Update user details. Only admins can update users."""
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Only admins can update users"
+        )
+    print(user_update.email)
+    success = db.update_user(
+        email_to_update=email,
+        email=user_update.email,
+        role=user_update.role,
+        domain=user_update.domain,
+        full_name=user_update.full_name
+    )
+    
+    if success:
+        return {"message": "User updated successfully"}
+    raise HTTPException(status_code=400, detail="Failed to update user")
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

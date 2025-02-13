@@ -1,4 +1,3 @@
-
 import psycopg2
 from dotenv import load_dotenv
 import os
@@ -46,6 +45,7 @@ class DatabaseManager:
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS users (
                         user_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                        full_name VARCHAR(255) NOT NULL DEFAULT '',
                         email VARCHAR(255) UNIQUE NOT NULL,
                         role VARCHAR(50) NOT NULL,
                         domain VARCHAR(100) NOT NULL DEFAULT 'none',
@@ -454,7 +454,7 @@ class DatabaseManager:
             finally:
                 conn.close()
         return None
-    def upsert_user(self, email: str, role: str = "employee") -> Tuple[bool, str, str]:
+    def upsert_user(self, email: str, full_name: str = "", role: str = "employee") -> Tuple[bool, str, str]:
         """
         Checks if user exists by email. If not, inserts a new user with 'role'.
         Returns (success_bool, role, domain) tuple.
@@ -468,21 +468,26 @@ class DatabaseManager:
                 cursor.execute("SELECT user_id, role, domain FROM users WHERE email = %s", (email,))
                 existing = cursor.fetchone()
                 if not existing:
-                    # Insert new user; domain will default to 'none'
+                    # Insert new user
                     cursor.execute("""
-                        INSERT INTO users (user_id, email, role)
-                        VALUES (uuid_generate_v4(), %s, %s)
+                        INSERT INTO users (user_id, email, role, full_name)
+                        VALUES (uuid_generate_v4(), %s, %s, %s)
                         RETURNING user_id
-                    """, (email, role))
+                    """, (email, role, full_name))
                     new_user_id = cursor.fetchone()[0]
-                    print(f"Created new user with ID: {new_user_id} | Email: {email}")
                     return_role = role
-                    return_domain = 'none'  # Default domain for new users
+                    return_domain = 'none'
                 else:
+                    # Update existing user's name if provided
+                    if full_name:
+                        cursor.execute("""
+                            UPDATE users 
+                            SET full_name = %s 
+                            WHERE email = %s
+                        """, (full_name, email))
                     # Return existing user's role and domain
                     return_role = existing[1]
                     return_domain = existing[2]
-                    print(f"User with email {email} already exists. Skipping creation.")
                 conn.commit()
                 return True, return_role, return_domain
         except Exception as e:
@@ -490,6 +495,48 @@ class DatabaseManager:
             return False, "", ""
         finally:
             conn.close()
+
+    def get_all_users(self) -> pd.DataFrame:
+        """Returns all users as a pandas DataFrame."""
+        conn = self.connect()
+        if conn:
+            try:
+                query = """
+                    SELECT 
+                        user_id::text,
+                        email,
+                        full_name,
+                        role,
+                        domain
+                    FROM users
+                    ORDER BY created_at DESC
+                """
+                return pd.read_sql_query(query, conn)
+            finally:
+                conn.close()
+        return pd.DataFrame()
+
+    def update_user(self, email_to_update: str, email: str, role: str, domain: str, full_name: str) -> bool:
+        """Update user details."""
+        conn = self.connect()
+        if not conn:
+            return False
+        try:
+            with conn.cursor() as cursor:
+                query = """
+                UPDATE users 
+                SET role = %s, domain = %s, full_name = %s , email = %s
+                WHERE email = %s
+                """
+                cursor.execute(query, (role, domain, full_name, email, email_to_update))
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error updating user: {e}")
+            return False
+        finally:
+            conn.close()
+
     def check_db_connection(self) -> bool:
         """Returns True if the DB connection succeeds."""
         conn = self.connect()
@@ -515,52 +562,6 @@ class DatabaseManager:
             return pd.read_sql_query(query, conn, params=(email,))
         finally:
             conn.close()
-    def get_all_users(self) -> pd.DataFrame:
-        """Returns all users as a pandas DataFrame."""
-        conn = self.connect()
-        if conn:
-            try:
-                query = """
-                    SELECT user_id, email, role, domain
-                    FROM users
-                    ORDER BY created_at DESC
-                """
-                return pd.read_sql_query(query, conn)
-            finally:
-                conn.close()
-        return pd.DataFrame()
-    def update_user_domain(self, email: str, new_domain: str) -> bool:
-        """
-        Updates the 'domain' for a given user by email.
-        In your FastAPI route, ensure only admins can call this.
-        """
-        conn = self.connect()
-        if not conn:
-            return False
-        try:
-            with conn.cursor() as cursor:
-                # Check if user exists
-                cursor.execute("SELECT user_id FROM users WHERE email = %s", (email,))
-                user_row = cursor.fetchone()
-                if not user_row:
-                    print(f"No user found with email: {email}")
-                    return False
-                # Update domain
-                cursor.execute("""
-                    UPDATE users
-                    SET domain = %s
-                    WHERE email = %s
-                """, (new_domain, email))
-            conn.commit()
-            print(f"Updated domain for {email} to '{new_domain}'.")
-            return True
-        except Exception as e:
-            print(f"Error updating user domain: {e}")
-            return False
-        finally:
-            conn.close()
-
-
         
         
 # manager=DatabaseManager()
