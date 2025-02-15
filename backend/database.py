@@ -3,8 +3,8 @@ from dotenv import load_dotenv
 import os
 import pandas as pd
 from datetime import datetime, timedelta
-from typing import Optional, Tuple, List
-
+from typing import Dict, Optional, Tuple, List
+from psycopg2.extras import RealDictCursor
 
 class DatabaseManager:
     def __init__(self):
@@ -438,5 +438,186 @@ class DatabaseManager:
         except Exception as e:
             print(f"Error updating user domain: {e}")
             return False
+        finally:
+            conn.close()
+
+    #graphs part
+
+    def get_complaint_trends(self) -> Optional[List[Dict]]:
+        """Fetches complaint trends over time (daily complaint count)."""
+        conn = self.connect()  # Establish a new connection
+        if not conn:
+            return None
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute("""
+                    SELECT DATE(created_at) AS date, COUNT(*) AS count
+                    FROM complaints
+                    GROUP BY DATE(created_at)
+                    ORDER BY date ASC;
+                """)
+                return cursor.fetchall()
+        except Exception as e:
+            print(f"Error fetching complaint trends: {e}")
+            return None
+        finally:
+            conn.close()  # Close the connection properly
+
+    def get_complaint_categories(self) -> Optional[List[Dict]]:
+        """Fetches complaint category distribution."""
+        conn = self.connect()  # Establish a new connection
+        if not conn:
+            return None
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute("""
+                    SELECT complaint_category AS category, COUNT(*) AS count
+                    FROM complaints
+                    GROUP BY complaint_category
+                    ORDER BY count DESC;
+                """)
+                return cursor.fetchall()
+        except Exception as e:
+            print(f"Error fetching complaint categories: {e}")
+            return None
+        finally:
+            conn.close()  # Ensure connection is closed
+
+
+    # def get_urgency_priority(self) -> List[Dict]:
+    #     """Fetches urgency vs priority scores."""
+    #     conn = self.connect()  # ✅ Call the connection method correctly
+    #     if not conn:
+    #         return []  # ✅ Return an empty list instead of None
+
+    #     try:
+    #         with conn.cursor(cursor_factory=RealDictCursor) as cursor:  # ✅ Use `conn` instead of `self.conn`
+    #             cursor.execute("""
+    #                 SELECT urgency_score, priority_score
+    #                 FROM complaints;
+    #             """)
+    #             results = cursor.fetchall()
+    #             return results if results else []  # ✅ Ensure a list is always returned
+    #     except Exception as e:
+    #         print(f"Error fetching urgency vs priority: {e}")
+    #         return []  # ✅ Return an empty list on error
+    #     finally:
+    #         conn.close()  # ✅ Close the connection
+
+
+    def get_resolution_time(self) -> List[Dict]:
+        """Fetches complaint resolution time along with created_at and scheduled_callback timestamps."""
+        conn = self.connect()
+        if not conn:
+            return []  # Ensure an empty list is returned if connection fails
+
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute("""
+                    SELECT 
+                        created_at, 
+                        scheduled_callback, 
+                        EXTRACT(EPOCH FROM (scheduled_callback - created_at)) / 3600 AS resolution_time
+                    FROM complaints
+                    WHERE scheduled_callback IS NOT NULL;
+                """)
+                results = cursor.fetchall()
+
+                # Convert datetime fields to ISO 8601 strings
+                for row in results:
+                    row["created_at"] = row["created_at"].isoformat()
+                    row["scheduled_callback"] = row["scheduled_callback"].isoformat()
+
+                return results if results else []  # Ensure we always return a list
+        except Exception as e:
+            print(f"Error fetching resolution times: {e}")
+            return []
+        finally:
+            conn.close()  # Ensure the connection is closed
+
+
+    def get_politeness_resolution(self) -> List[Dict]:
+        """Fetch politeness score vs resolution status."""
+        conn = self.connect() 
+        if not conn:
+            return []  
+
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute("""
+                    SELECT politeness_score, (status = 'Resolved') AS resolved
+                    FROM complaints;
+                """)
+                results = cursor.fetchall()
+                return results if results else []  
+        except Exception as e:
+            print(f"Error fetching politeness vs resolution: {e}")
+            return [] 
+        finally:
+            conn.close() 
+            
+    def get_status_distribution(self) -> List[Dict]:
+        """Fetches the count of complaints based on status (open, closed, etc.)."""
+        conn = self.connect()
+        if not conn:
+            return []
+
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute("""
+                    SELECT status, COUNT(*) AS count
+                    FROM complaints
+                    GROUP BY status
+                    ORDER BY count DESC;
+                """)
+                results = cursor.fetchall()
+                return results if results else []
+        except Exception as e:
+            print(f"Error fetching status distribution: {e}")
+            return []
+        finally:
+            conn.close()
+            
+    def get_past_complaints_vs_urgency(self) -> List[Dict]:
+        """Fetches past complaint count vs urgency score for a bubble chart."""
+        conn = self.connect()
+        if not conn:
+            return []
+
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute("""
+                    SELECT past_count, priority_score
+                    FROM complaints
+                    WHERE past_count IS NOT NULL AND priority_score IS NOT NULL;
+                """)
+                results = cursor.fetchall()
+                return results if results else []
+        except Exception as e:
+            print(f"Error fetching past complaints vs urgency: {e}")
+            return []
+        finally:
+            conn.close()
+            
+    def get_priority_vs_resolution_speed(self) -> List[Dict]:
+        """Fetches priority score vs resolution speed (time difference in hours)."""
+        conn = self.connect()
+        if not conn:
+            return []
+
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                cursor.execute("""
+                    SELECT 
+                        priority_score, 
+                        EXTRACT(EPOCH FROM (scheduled_callback - created_at)) / 3600 AS scheduling_time 
+                    FROM complaints
+                    WHERE scheduled_callback IS NOT NULL ;
+                """)
+                results = cursor.fetchall()
+                return results if results else []
+        except Exception as e:
+            print(f"Error fetching priority vs resolution speed: {e}")
+            return []
         finally:
             conn.close()

@@ -311,6 +311,121 @@ def change_domain( email: str = Body(...),
     else:
         raise HTTPException(status_code=400, detail="Domain update failed")
 
+#graphs part
+
+class ComplaintTrendResponse(BaseModel):
+    date: str
+    count: int
+
+class ComplaintCategoryResponse(BaseModel):
+    category: str
+    count: int
+
+class SentimentDistributionResponse(BaseModel):
+    sentiment_score: float
+
+class UrgencyPriorityResponse(BaseModel):
+    urgency_score: float
+    priority_score: float
+
+class ResolutionTimeResponse(BaseModel):
+    creatd_at: str
+    scheduled_callback:str
+    resolution_time: float
+
+class PolitenessResolutionResponse(BaseModel):
+    politeness_score: float
+    resolved: bool
+    
+class StatusDistributionResponse(BaseModel):
+    status: str
+    count: int
+
+class PastUrgencyResponse(BaseModel):
+    past_count: int
+    priority_score: float
+    
+class PriorityResolutionResponse(BaseModel):
+    priority_score: float
+    scheduling_time: Optional[float]  # Time in hours from complaint creation to scheduling
+    # resolution_time: Optional[float]  # Time in hours from complaint creation to resolution
+
+
+@app.get("/complaints/trends")
+def get_complaint_trends():
+    """Fetch complaint trends over time."""
+    try:
+        result = db.get_complaint_trends()
+        if result is None:
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching complaint trends: {str(e)}")
+
+@app.get("/complaints/categories", response_model=List[ComplaintCategoryResponse])
+def get_complaint_categories():
+    """Fetch complaint category distribution."""
+    try:
+        return db.get_complaint_categories()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching complaint categories: {str(e)}")
+
+
+
+# #issue
+# @app.get("/complaints/urgency_priority", response_model=List[UrgencyPriorityResponse])
+# def get_urgency_priority():
+#     """Fetch urgency vs priority analysis."""
+#     try:
+#         return db.get_urgency_priority()
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Error fetching urgency vs priority: {str(e)}")
+
+@app.get("/complaints/resolution_time")
+def get_resolution_time():
+    """Fetch complaint resolution times."""
+    try:
+        result = db.get_resolution_time()
+        if result is None:  # Additional safety check
+            raise HTTPException(status_code=500, detail="Database connection failed")
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching resolution times: {str(e)}")
+    
+@app.get("/complaints/priority_vs_resolution", response_model=List[PriorityResolutionResponse])
+def get_priority_vs_resolution_speed():
+    """Fetch priority score vs resolution speed analysis."""
+    try:
+        return db.get_priority_vs_resolution_speed()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching priority vs resolution speed: {str(e)}")
+
+
+
+# @app.get("/complaints/politeness_resolution", response_model=List[PolitenessResolutionResponse])
+# def get_politeness_resolution():
+#     """Fetch politeness score vs resolution status."""
+    
+#     try:
+#         return db.get_politeness_resolution()
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Error fetching politeness vs resolution: {str(e)}")
+    
+@app.get("/complaints/status_distribution", response_model=List[StatusDistributionResponse])
+def get_status_distribution():
+    """Fetch complaint status distribution."""
+    try:
+        return db.get_status_distribution()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching status distribution: {str(e)}")
+    
+@app.get("/complaints/past_vs_urgency", response_model=List[PastUrgencyResponse])
+def get_past_complaints_vs_urgency():
+    """Fetch past complaints vs urgency for bubble chart."""
+    try:
+        return db.get_past_complaints_vs_urgency()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching past complaints vs urgency: {str(e)}")
 
 
 @app.get("/")
