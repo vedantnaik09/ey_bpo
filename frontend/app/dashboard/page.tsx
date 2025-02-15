@@ -287,18 +287,48 @@ const ComplaintsDashboardCharts: React.FC = () => {
   };
 
   // Chart 4: Status Distribution of Complaints (Doughnut Chart)
+  // Define a mapping for status colors
+  const statusColorMap: {
+    [key: string]: { background: string; border: string };
+  } = {
+    resolved: {
+      background: "rgba(75, 192, 192, 0.6)",
+      border: "rgba(75, 192, 192, 1)",
+    },
+    pending: {
+      background: "rgba(255, 205, 86, 0.6)",
+      border: "rgba(255, 205, 86, 1)",
+    },
+    // Add more statuses here if needed.
+  };
+
+  // Generate colors for each status in the dataset
+  const backgroundColors = statusData.map((item) =>
+    statusColorMap[item.status.toLowerCase()]
+      ? statusColorMap[item.status.toLowerCase()].background
+      : "rgba(153, 102, 255, 0.6)"
+  );
+
+  const borderColors = statusData.map((item) =>
+    statusColorMap[item.status.toLowerCase()]
+      ? statusColorMap[item.status.toLowerCase()].border
+      : "rgba(153, 102, 255, 1)"
+  );
+
+  // Updated doughnutChartData using the dynamic colors:
   const doughnutChartData = {
     labels: statusData.map((item) => item.status),
     datasets: [
       {
         label: "Status Distribution",
         data: statusData.map((item) => item.count),
-        backgroundColor: ["rgba(153, 102, 255, 0.6)"],
-        borderColor: ["rgba(153, 102, 255, 1)"],
+        backgroundColor: backgroundColors,
+        borderColor: borderColors,
         borderWidth: 1,
       },
     ],
   };
+
 
   // Chart 5: Past Complaints vs Current Urgency (Bubble Chart)
   const bubbleChartData = {
@@ -634,8 +664,8 @@ export default function DashboardPage() {
     return complaints.filter((complaint) =>
       complaint.scheduled_callback
         ? formatToISTstartWithYear(complaint.scheduled_callback).startsWith(
-            formattedDay
-          )
+          formattedDay
+        )
         : false
     );
   };
@@ -661,7 +691,7 @@ export default function DashboardPage() {
   const resolvedComplaints = complaints.filter(
     (c) => c.status === "resolved"
   ).length;
-  const unresolvedComplaints = totalComplaints - resolvedComplaints;
+  const unresolvedComplaints = totalComplaints;
 
   const toggleEscalation = async (id: number) => {
     setLoading((prev) => ({ ...prev, [id]: true }));
@@ -762,9 +792,8 @@ export default function DashboardPage() {
             {complaints.map((complaint) => (
               <TableRow
                 key={complaint.complaint_id}
-                className={`group ${
-                  complaint.is_escalated ? "hover:bg-red-950/30" : ""
-                }`}
+                className={`group ${complaint.is_escalated ? "hover:bg-red-950/30" : ""
+                  }`}
               >
                 <TableCell className="font-medium">
                   {complaint.customer_name}
@@ -807,8 +836,8 @@ export default function DashboardPage() {
                     {complaint.priority_score >= 0.7
                       ? "High"
                       : complaint.priority_score >= 0.4
-                      ? "Medium"
-                      : "Low"}
+                        ? "Medium"
+                        : "Low"}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -828,20 +857,18 @@ export default function DashboardPage() {
                       className="focus:outline-none"
                     >
                       <Flag
-                        className={`h-5 w-5 transition-colors ${
-                          complaint.is_escalated
+                        className={`h-5 w-5 transition-colors ${complaint.is_escalated
                             ? "text-red-500 group-hover:fill-red-500"
                             : "text-gray-400 group-hover:text-red-500 group-hover:fill-red-500"
-                        }`}
+                          }`}
                       />
                     </button>
                   </div>
                 </TableCell>
                 <TableCell>
                   <div
-                    className={`flex gap-2 ${
-                      complaint.status === "resolved" ? "" : "justify-end"
-                    }`}
+                    className={`flex gap-2 ${complaint.status === "resolved" ? "" : "justify-end"
+                      }`}
                   >
                     {complaint.status === "resolved" ? (
                       <div
@@ -873,9 +900,8 @@ export default function DashboardPage() {
                       variant="outline"
                       onClick={() => toggleResolve(complaint.complaint_id)}
                       disabled={loading[complaint.complaint_id]}
-                      className={`border-green-500 text-green-500 hover:bg-green-50 dark:hover:bg-green-950 ${
-                        complaint.status !== "resolved" ? "mr-20" : ""
-                      }`}
+                      className={`border-green-500 text-green-500 hover:bg-green-50 dark:hover:bg-green-950 ${complaint.status !== "resolved" ? "mr-20" : ""
+                        }`}
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
                       {complaint.status !== "resolved"
@@ -970,8 +996,8 @@ export default function DashboardPage() {
                         {complaint.priority_score >= 0.7
                           ? "High Priority"
                           : complaint.priority_score >= 0.4
-                          ? "Medium Priority"
-                          : "Low Priority"}
+                            ? "Medium Priority"
+                            : "Low Priority"}
                       </Badge>
                     </div>
                   </div>
