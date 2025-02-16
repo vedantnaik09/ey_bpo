@@ -29,7 +29,6 @@ import { Loader2 } from "lucide-react"
 interface User {
   user_id: string
   email: string
-  full_name: string
   role: string
   domain: string
 }
@@ -39,7 +38,7 @@ const domains = [
   "Technical Support",
   "Billing",
   "New Connection",
-  "Added Service and Bundle offers"
+  "Added Service and Bundle offers",
 ]
 
 export default function UsersPage() {
@@ -80,24 +79,28 @@ export default function UsersPage() {
 
   const handleUpdateUser = async (user: User) => {
     try {
-      // Make sure we send all required fields
       const updateData = {
         email: editForm.email || user.email,
-        full_name: editForm.full_name || user.full_name,
         role: editForm.role || user.role,
-        domain: editForm.domain || user.domain
-      };
-
-      await axiosManagerInstance.put(`/users/${user.email}`, updateData);
-      toast.success("User updated successfully");
-      fetchUsers();
-      setEditingUser(null);
-      setEditForm({});
+        domain: editForm.domain || user.domain,
+      }
+  
+      console.log("Sending update request:", updateData) // Debugging log
+  
+      const response = await axiosManagerInstance.put(`/users/${user.email}`, updateData)
+      
+      console.log("Update response:", response.data) // Debugging log
+      
+      toast.success("User updated successfully")
+      fetchUsers()
+      setEditingUser(null)
+      setEditForm({})
     } catch (error) {
-      console.error("Update error:", error);
-      toast.error("Failed to update user");
+      console.error("Update error:", error)
+      toast.error("Failed to update user")
     }
-  };
+  }
+  
 
   if (loading) {
     return (
@@ -108,7 +111,6 @@ export default function UsersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Domain</TableHead>
@@ -117,7 +119,7 @@ export default function UsersPage() {
               </TableHeader>
               <TableBody>
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell colSpan={4} className="h-24 text-center">
                     <div className="flex items-center justify-center">
                       <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
                       <span className="ml-2">Loading users...</span>
@@ -140,7 +142,6 @@ export default function UsersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Domain</TableHead>
@@ -150,18 +151,6 @@ export default function UsersPage() {
             <TableBody>
               {users.map((user) => (
                 <TableRow key={user.user_id}>
-                  <TableCell>
-                    {editingUser === user.email ? (
-                      <Input
-                        value={editForm.full_name || user.full_name}
-                        onChange={(e) =>
-                          setEditForm({ ...editForm, full_name: e.target.value })
-                        }
-                      />
-                    ) : (
-                      user.full_name
-                    )}
-                  </TableCell>
                   <TableCell>
                     {editingUser === user.email ? (
                       <Input
@@ -225,7 +214,7 @@ export default function UsersPage() {
                       <div className="gap-2 flex flex-center flex-wrap items-center">
                         <Button
                           variant="default"
-                          onClick={() => handleUpdateUser(user)}  // Pass the full user object
+                          onClick={() => handleUpdateUser(user)}
                         >
                           Save
                         </Button>

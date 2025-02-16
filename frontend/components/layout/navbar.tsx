@@ -54,7 +54,7 @@ export function Navbar() {
           </div>
 
           <div className="flex-1 hidden md:flex items-center justify-center gap-8">
-            {user && (
+          {userRole === "admin" && (
               <>
                 <Link 
                   href="/dashboard" 
@@ -89,6 +89,8 @@ export function Navbar() {
                       }`}
                     >
                       Users
+                      Employees
+
                     </Link>
                   </>
                 )}

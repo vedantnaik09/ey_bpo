@@ -16,26 +16,17 @@ import { onAuthStateChanged } from "firebase/auth"
 import { auth } from "@/firebase/config"
 import { Loader2 } from "lucide-react"
 
-interface Message {
-  message_id: string
-  sender: string
-  message: string
-  timestamp: string
-}
-
-interface Call {
-  call_id: string
-  caller: string
-  receiver: string
-  start_time: string
-  end_time: string | null
-  created_at: string
-  messages: Message[]
+// Adjust this interface to match what /transcripts actually returns:
+interface Transcript {
+  id: number
+  phone_number: string
+  call_transcript: string
+  called_at: string // The date/time field from your DB
 }
 
 export default function CallsPage() {
   const { push } = useRouter()
-  const [calls, setCalls] = useState<Call[]>([])
+  const [transcripts, setTranscripts] = useState<Transcript[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -48,18 +39,30 @@ export default function CallsPage() {
         const role = localStorage.getItem("userRole")
         if (role !== "admin") {
           push("/dashboard")
+          return
         }
-        fetchCalls()
+        fetchTranscripts()
       }
     })
 
     return () => unsubscribe()
   }, [push])
 
-  const fetchCalls = async () => {
+  const fetchTranscripts = async () => {
     try {
-      const response = await axiosManagerInstance.get("/calls")
-      setCalls(response.data)
+      // /transcripts presumably returns an array of objects
+      // with { id, phone_number, call_transcript, called_at, ... }
+      const response = await axiosManagerInstance.get("/transcripts")
+      const data = response.data as Transcript[]
+
+      // Sort in descending order by called_at
+      data.sort((a, b) => {
+        const dateA = new Date(a.called_at).getTime()
+        const dateB = new Date(b.called_at).getTime()
+        return dateB - dateA // newest first
+      })
+
+      setTranscripts(data)
     } catch (error) {
       toast.error("Failed to fetch calls")
     } finally {
@@ -72,7 +75,7 @@ export default function CallsPage() {
       <div className="min-h-screen bg-gray-50/50 dark:bg-gray-900/50 pt-24 px-8 pb-8">
         <div className="flex items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
-          <span className="ml-2">Loading calls...</span>
+          <span className="ml-2">Loading transcripts...</span>
         </div>
       </div>
     )
@@ -82,48 +85,26 @@ export default function CallsPage() {
     <div className="min-h-screen bg-gray-50/50 dark:bg-gray-900/50 pt-24 px-8 pb-8">
       <h1 className="text-3xl font-bold mb-6">Call Transcripts</h1>
       <div className="space-y-4">
-        {calls.map((call) => (
-          <Card key={call.call_id} className="p-4">
+        {transcripts.map((t) => (
+          <Card key={t.id} className="p-4">
             <Accordion type="single" collapsible>
-              <AccordionItem value={call.call_id}>
+              <AccordionItem value={String(t.id)}>
                 <AccordionTrigger>
                   <div className="flex justify-between w-full pr-6">
                     <div>
-                      <span className="font-semibold">
-                        {call.caller} → {call.receiver}
-                      </span>
+                      <span className="font-semibold">{t.phone_number}</span>
                     </div>
                     <div className="text-sm text-gray-500">
-                      {format(new Date(call.start_time), "PPpp")}
+                      {/* If called_at is valid, format it; else fallback */}
+                      {t.called_at
+                        ? format(new Date(t.called_at), "PPpp")
+                        : "No Time"}
                     </div>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent>
                   <div className="space-y-2 mt-4">
-                    {call.messages?.map((msg) => (
-                      <div
-                        key={msg.message_id}
-                        className={`flex gap-2 ${
-                          msg.sender === call.caller
-                            ? "justify-start"
-                            : "justify-end"
-                        }`}
-                      >
-                        <div
-                          className={`rounded-lg p-3 max-w-[80%] ${
-                            msg.sender === call.caller
-                              ? "bg-gray-100 dark:bg-gray-800"
-                              : "bg-blue-100 dark:bg-blue-900"
-                          }`}
-                        >
-                          <p className="text-sm font-semibold">{msg.sender}</p>
-                          <p>{msg.message}</p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {format(new Date(msg.timestamp), "pp")}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                    <p>{t.call_transcript}</p>
                   </div>
                 </AccordionContent>
               </AccordionItem>
