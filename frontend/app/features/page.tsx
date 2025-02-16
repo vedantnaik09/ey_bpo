@@ -59,7 +59,7 @@ function FeatureCard({ icon: Icon, title, description }: feature) {
   );
 }
 
-export function Features() {
+export default function Features() {
   return (
     <section className="relative py-20 bg-gray-50/50 dark:bg-gray-900/50">
       <div className="container mx-auto px-4">

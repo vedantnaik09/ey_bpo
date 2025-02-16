@@ -37,7 +37,7 @@ export default function CallsPage() {
         const token = await user.getIdToken(true)
         localStorage.setItem("firebaseToken", token)
         const role = localStorage.getItem("userRole")
-        if (role !== "admin") {
+        if (role?.trim() !== "admin") {
           push("/dashboard")
           return
         }

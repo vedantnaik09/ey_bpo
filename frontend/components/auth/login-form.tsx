@@ -81,7 +81,7 @@ export function LoginForm() {
 
       // Store email, role, and domain in local storage
       localStorage.setItem("userEmail", data.email);
-      localStorage.setItem("userRole", data.role);
+      localStorage.setItem("userRole", data.role.trim());
       localStorage.setItem("userDomain", data.domain);
 
       console.log("User details:", user);

@@ -835,26 +835,18 @@ export default function DashboardPage() {
                   )}
                 </TableCell>
                 <TableCell>
-                  {/* Tooltip for Knowledge Base Solution */}
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger className="cursor-pointer text-blue-500 underline">View Solution</TooltipTrigger>
-                      <TooltipContent className="max-w-xs text-sm">{complaint.knowledge_base_solution || "No solution available"}</TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <div
+                    className="group relative self-center ml-3"
+                    onMouseEnter={(e) => handleMouseEnter(e, complaint.complaint_id)}
+                    onMouseLeave={handleMouseLeave}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <span className="h-5 w-5 rounded-full bg-blue-500 text-white flex items-center justify-center">i</span>
+                  </div>
                 </TableCell>
                 <TableCell>
                   <div className={`flex gap-2 ${complaint.status === "resolved" ? "" : "justify-end"}`}>
-                    {complaint.status === "resolved" ? (
-                      <div
-                        className="group relative self-center ml-3"
-                        onMouseEnter={(e) => handleMouseEnter(e, complaint.complaint_id)}
-                        onMouseLeave={handleMouseLeave}
-                        style={{ cursor: "pointer" }}
-                      >
-                        <span className="h-5 w-5 rounded-full bg-blue-500 text-white flex items-center justify-center">i</span>
-                      </div>
-                    ) : (
+                    {complaint.status !== "resolved" && (
                       <Button
                         size="sm"
                         onClick={() => handleCall(complaint.complaint_id)}
@@ -865,6 +857,7 @@ export default function DashboardPage() {
                         Call
                       </Button>
                     )}
+
                     <Button
                       size="sm"
                       variant="outline"

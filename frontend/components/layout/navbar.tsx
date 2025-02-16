@@ -20,22 +20,24 @@ export function Navbar() {
       setScrolled(window.scrollY > 20);
     };
     window.addEventListener("scroll", handleScroll);
-    
+  
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
-      if (user) {
-        const role = localStorage.getItem("userRole");
-        setUserRole(role);
-      } else {
-        setUserRole(null);
-      }
     });
-
+  
     return () => {
       window.removeEventListener("scroll", handleScroll);
       unsubscribe();
     };
   }, []);
+  
+  useEffect(() => {
+    if (user) {
+      setUserRole(localStorage.getItem("userRole"));
+    } else {
+      setUserRole(null);
+    }
+  }, [user]);
 
   const handleSignOut = async () => {
     await signOut(auth);
@@ -54,7 +56,7 @@ export function Navbar() {
           </div>
 
           <div className="flex-1 hidden md:flex items-center justify-center gap-8">
-          {userRole === "admin" && (
+          {userRole?.trim() === "admin" && (
               <>
                 <Link 
                   href="/dashboard" 
