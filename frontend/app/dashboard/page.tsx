@@ -691,7 +691,7 @@ export default function DashboardPage() {
   const renderDomainFilter = () => {
     if (userRole !== "admin") return null;
     return (
-      <div className="mb-2">
+      <div className="m-2">
         <Select value={selectedDomain} onValueChange={(value) => setSelectedDomain(value)}>
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="Select Category" />
