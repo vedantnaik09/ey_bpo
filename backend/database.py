@@ -68,6 +68,15 @@ class DatabaseManager:
                         knowledge_base_solution TEXT
                     );
                 """)
+                # 3) Create 'transcripts' table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS transcripts (
+                    id SERIAL PRIMARY KEY,
+                    phone_number TEXT,
+                    call_transcript TEXT,
+                    called_at TIMESTAMPTZ
+                    );
+                """)
 
             conn.commit()
             print("Tables ensured (created if not existed).")

@@ -21,30 +21,11 @@ import { Badge } from "@/components/ui/badge";
 // ==========================
 // Chart.js & React Chart Imports
 // ==========================
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  ArcElement,
-  Tooltip as ChartTooltip,
-  Legend,
-  Title,
-} from "chart.js";
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Tooltip as ChartTooltip, Legend, Title } from "chart.js";
 import { Line, Pie, Doughnut, Bubble, Scatter } from "react-chartjs-2";
 import "chartjs-chart-box-and-violin-plot";
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  ArcElement,
-  ChartTooltip,
-  Legend,
-  Title
-);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ArcElement, ChartTooltip, Legend, Title);
 
 const CHART_HEIGHT = "300px";
 
@@ -104,6 +85,7 @@ interface ResolutionData {
   created_at: string;
   scheduled_callback: string;
   resolution_time: number;
+  priority_score: number;
 }
 
 interface PriorityData {
@@ -162,7 +144,7 @@ function processComplaints(complaints: Complaint[]): Complaint[] {
   complaints.forEach((complaint) => {
     const baseTicketId = complaint.ticket_id.trim();
     const key = `${baseTicketId}-${complaint.customer_phone_number}`;
-    if (!ticketMap.has(key) || (complaint.past_count > (ticketMap.get(key)?.past_count || 0))) {
+    if (!ticketMap.has(key) || complaint.past_count > (ticketMap.get(key)?.past_count || 0)) {
       ticketMap.set(key, complaint);
     }
   });
@@ -264,43 +246,60 @@ const ComplaintsDashboardCharts: React.FC = () => {
       {
         label: "Complaint Categories",
         data: categoriesData.map((item) => item.count),
-        backgroundColor: [
-          "rgba(255, 99, 132, 0.6)",
-          "rgba(54, 162, 235, 0.6)",
-        ],
-        borderColor: [
-          "rgba(255, 99, 132, 1)",
-          "rgba(54, 162, 235, 1)",
-        ],
+        backgroundColor: ["rgba(255, 99, 132, 0.6)", "rgba(54, 162, 235, 0.6)"],
+        borderColor: ["rgba(255, 99, 132, 1)", "rgba(54, 162, 235, 1)"],
         borderWidth: 1,
       },
     ],
   };
 
-  // Chart 3: Complaint Resolution Time Analysis (Box Plot with a Line)
-  const resolutionTimes = resolutionData.map((item) => item.resolution_time);
-  const sortedResolutionTimes = [...resolutionTimes].sort((a, b) => a - b);
-
-  const computeBoxPlotStats = (data: number[]) => {
-    if (data.length === 0) return null;
-    const min = data[0];
-    const max = data[data.length - 1];
-    const median = data[Math.floor(data.length / 2)];
-    const q1 = data[Math.floor(data.length / 4)];
-    const q3 = data[Math.floor((data.length * 3) / 4)];
-    return { min, q1, median, q3, max };
-  };
-
-  const boxPlotStats = computeBoxPlotStats(sortedResolutionTimes);
-  const boxPlotData = {
-    labels: ["Resolution Time"],
+  const resolutionChartData = {
+    labels: resolutionData.map((item) => new Date(item.created_at).toLocaleDateString()),
     datasets: [
       {
-        label: "Resolution Time (days)",
-        data: boxPlotStats ? [boxPlotStats] : [],
-        backgroundColor: "rgba(75,192,192,0.4)",
+        label: "Resolution Time (hours)",
+        data: resolutionData.map((item) => item.resolution_time),
+        fill: false,
+        borderColor: "rgb(75, 192, 192)",
+        tension: 0.1,
+        pointRadius: 5,
+        pointHoverRadius: 8,
       },
     ],
+  };
+
+  const resolutionChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      tooltip: {
+        callbacks: {
+          label: (context: any) => {
+            const dataPoint = resolutionData[context.dataIndex];
+            return [`Resolution Time: ${dataPoint.resolution_time.toFixed(2)} hours`, `Priority Score: ${dataPoint.priority_score.toFixed(2)}`];
+          },
+        },
+      },
+      legend: {
+        position: "top" as const,
+      },
+      title: {
+        display: true,
+        text: "Resolution Time Analysis",
+        font: { size: 16 },
+      },
+    },
+    scales: {
+      x: {
+        title: { display: true, text: "Date" },
+        grid: { color: "rgba(200,200,200,0.2)" },
+      },
+      y: {
+        title: { display: true, text: "Resolution Time (hours)" },
+        grid: { color: "rgba(200,200,200,0.2)" },
+        beginAtZero: true,
+      },
+    },
   };
 
   // Chart 4: Status Distribution of Complaints (Doughnut)
@@ -450,7 +449,6 @@ const ComplaintsDashboardCharts: React.FC = () => {
   };
 
   return (
-    
     <div className="p-4">
       <h1 className="text-3xl font-bold mb-4">Complaints Dashboard Charts</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -473,22 +471,7 @@ const ComplaintsDashboardCharts: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div style={{ height: CHART_HEIGHT }}>
-              <Line
-                data={boxPlotData}
-                options={{
-                  maintainAspectRatio: false,
-                  plugins: {
-                    tooltip: {
-                      callbacks: {
-                        label: (context: any) => {
-                          const { min, q1, median, q3, max } = context.raw;
-                          return `Min: ${min}, Q1: ${q1}, Median: ${median}, Q3: ${q3}, Max: ${max}`;
-                        },
-                      },
-                    },
-                  },
-                }}
-              />
+              <Line data={resolutionChartData} options={resolutionChartOptions} />
             </div>
           </CardContent>
         </Card>
@@ -633,9 +616,7 @@ export default function DashboardPage() {
 
   const fetchComplaints = async () => {
     try {
-      const response = await axiosManagerInstance.get(
-        `/complaints/by-category/${selectedDomain}`
-      );
+      const response = await axiosManagerInstance.get(`/complaints/by-category/${selectedDomain}`);
       const processedData = processComplaints(response.data);
       setComplaints(processedData);
     } catch (error) {
@@ -646,11 +627,7 @@ export default function DashboardPage() {
 
   const getDayComplaints = (day: Date): Complaint[] => {
     const formattedDay = format(day, "yyyy-MM-dd");
-    return complaints.filter((c) =>
-      c.scheduled_callback
-        ? formatToISTstartWithYear(c.scheduled_callback).startsWith(formattedDay)
-        : false
-    );
+    return complaints.filter((c) => (c.scheduled_callback ? formatToISTstartWithYear(c.scheduled_callback).startsWith(formattedDay) : false));
   };
 
   const handleOpenReschedule = (id: number) => {
@@ -776,7 +753,6 @@ export default function DashboardPage() {
       </div>
 
       {/* Admin Domain Filter */}
-    
 
       {/* Charts Section */}
       {userRole !== "employee" && (
@@ -789,141 +765,122 @@ export default function DashboardPage() {
 
       {/* Complaints Table */}
       <Card className="bg-white dark:bg-gray-800 mb-8">
-      {renderDomainFilter()}
-      <Table>
-  <TableHeader>
-    <TableRow>
-      <TableHead>Customer</TableHead>
-      {userRole !== "employee" && <TableHead>Category</TableHead>}
-      <TableHead>Phone Number</TableHead>
-      <TableHead>Description</TableHead>
-      <TableHead>Created</TableHead>
-      <TableHead>Callback</TableHead>
-      <TableHead>Sentiment</TableHead>
-      <TableHead>Priority</TableHead>
-      <TableHead>Status</TableHead>
-      <TableHead>Repeat Customer</TableHead>
-      <TableHead>Knowledge base solution</TableHead>
-      <TableHead>Actions</TableHead>
-    </TableRow>
-  </TableHeader>
-  <TableBody>
-    {complaints.map((complaint) => (
-      <TableRow key={complaint.complaint_id}>
-        <TableCell className="font-medium">{complaint.customer_name}</TableCell>
-        {userRole !== "employee" ? (
-          <TableCell className="font-medium">{complaint.complaint_category}</TableCell>
-        ) : null}
-        <TableCell>{complaint.customer_phone_number}</TableCell>
-        <TableCell>{complaint.complaint_description}</TableCell>
-        <TableCell className="whitespace-nowrap">{formatToIST(complaint.created_at)}</TableCell>
-        <TableCell>
-          <div className="text-center">
-            {complaint.scheduled_callback
-              ? formatToIST(complaint.scheduled_callback)
-              : "Not Scheduled"}
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleOpenReschedule(complaint.complaint_id)}
-            className="text-blue-500 hover:bg-background"
-          >
-            Reschedule
-          </Button>
-        </TableCell>
-        <TableCell>
-          <Badge className={getSeverityColor(complaint.priority_score)}>
-            {(complaint.priority_score * 100).toFixed(0)}%
-          </Badge>
-        </TableCell>
-        <TableCell>
-          <Badge className={getPriorityColor(complaint.priority_score)}>
-            {complaint.priority_score >= 0.7 ? "High" : complaint.priority_score >= 0.4 ? "Medium" : "Low"}
-          </Badge>
-        </TableCell>
-        <TableCell>
-          {complaint.status === "resolved" ? (
-            <CheckCircle className="h-5 w-5 text-green-500" />
-          ) : (
-            <XCircle className="h-5 w-5 text-red-500" />
-          )}
-        </TableCell>
-        <TableCell>
-          {complaint.past_count > 1 ? (
-            <div className="flex items-center">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Flag className="h-4 w-4 text-red-500 mr-2" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Ticket ID: {complaint.ticket_id}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <Badge variant="destructive" className="mr-2">Repeat</Badge>
-            </div>
-          ) : (
-            <span className="text-sm text-gray-500">New Customer</span>
-          )}
-        </TableCell>
-        <TableCell>
-          {/* Tooltip for Knowledge Base Solution */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger className="cursor-pointer text-blue-500 underline">
-                View Solution
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs text-sm">
-                {complaint.knowledge_base_solution || "No solution available"}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </TableCell>
-        <TableCell>
-          <div className={`flex gap-2 ${complaint.status === "resolved" ? "" : "justify-end"}`}>
-            {complaint.status === "resolved" ? (
-              <div
-                className="group relative self-center ml-3"
-                onMouseEnter={(e) => handleMouseEnter(e, complaint.complaint_id)}
-                onMouseLeave={handleMouseLeave}
-                style={{ cursor: "pointer" }}
-              >
-                <span className="h-5 w-5 rounded-full bg-blue-500 text-white flex items-center justify-center">
-                  i
-                </span>
-              </div>
-            ) : (
-              <Button
-                size="sm"
-                onClick={() => handleCall(complaint.complaint_id)}
-                disabled={loading[complaint.complaint_id]}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-              >
-                <Phone className="h-4 w-4 mr-2" />
-                Call
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => toggleResolve(complaint.complaint_id)}
-              disabled={loading[complaint.complaint_id]}
-              className={`border-green-500 text-green-500 hover:bg-green-50 dark:hover:bg-green-950 ${
-                complaint.status !== "resolved" ? "mr-20" : ""
-              }`}
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              {complaint.status !== "resolved" ? "Resolve" : "Mark as unresolved"}
-            </Button>
-          </div>
-        </TableCell>
-      </TableRow>
-    ))}
-  </TableBody>
-</Table>
-
+        {renderDomainFilter()}
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Customer</TableHead>
+              {userRole !== "employee" && <TableHead>Category</TableHead>}
+              <TableHead>Phone Number</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead>Callback</TableHead>
+              <TableHead>Sentiment</TableHead>
+              <TableHead>Priority</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Repeat Customer</TableHead>
+              <TableHead>Knowledge base solution</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {complaints.map((complaint) => (
+              <TableRow key={complaint.complaint_id}>
+                <TableCell className="font-medium">{complaint.customer_name}</TableCell>
+                {userRole !== "employee" ? <TableCell className="font-medium">{complaint.complaint_category}</TableCell> : null}
+                <TableCell>{complaint.customer_phone_number}</TableCell>
+                <TableCell>{complaint.complaint_description}</TableCell>
+                <TableCell className="whitespace-nowrap">{formatToIST(complaint.created_at)}</TableCell>
+                <TableCell>
+                  <div className="text-center">{complaint.scheduled_callback ? formatToIST(complaint.scheduled_callback) : "Not Scheduled"}</div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleOpenReschedule(complaint.complaint_id)}
+                    className="text-blue-500 hover:bg-background"
+                  >
+                    Reschedule
+                  </Button>
+                </TableCell>
+                <TableCell>
+                  <Badge className={getSeverityColor(complaint.priority_score)}>{(complaint.priority_score * 100).toFixed(0)}%</Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge className={getPriorityColor(complaint.priority_score)}>
+                    {complaint.priority_score >= 0.7 ? "High" : complaint.priority_score >= 0.4 ? "Medium" : "Low"}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {complaint.status === "resolved" ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />}
+                </TableCell>
+                <TableCell>
+                  {complaint.past_count > 1 ? (
+                    <div className="flex items-center">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Flag className="h-4 w-4 text-red-500 mr-2" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Ticket ID: {complaint.ticket_id}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <Badge variant="destructive" className="mr-2">
+                        Repeat
+                      </Badge>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-500">New Customer</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {/* Tooltip for Knowledge Base Solution */}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger className="cursor-pointer text-blue-500 underline">View Solution</TooltipTrigger>
+                      <TooltipContent className="max-w-xs text-sm">{complaint.knowledge_base_solution || "No solution available"}</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableCell>
+                <TableCell>
+                  <div className={`flex gap-2 ${complaint.status === "resolved" ? "" : "justify-end"}`}>
+                    {complaint.status === "resolved" ? (
+                      <div
+                        className="group relative self-center ml-3"
+                        onMouseEnter={(e) => handleMouseEnter(e, complaint.complaint_id)}
+                        onMouseLeave={handleMouseLeave}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <span className="h-5 w-5 rounded-full bg-blue-500 text-white flex items-center justify-center">i</span>
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={() => handleCall(complaint.complaint_id)}
+                        disabled={loading[complaint.complaint_id]}
+                        className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                      >
+                        <Phone className="h-4 w-4 mr-2" />
+                        Call
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => toggleResolve(complaint.complaint_id)}
+                      disabled={loading[complaint.complaint_id]}
+                      className={`border-green-500 text-green-500 hover:bg-green-50 dark:hover:bg-green-950 ${complaint.status !== "resolved" ? "mr-20" : ""}`}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      {complaint.status !== "resolved" ? "Resolve" : "Mark as unresolved"}
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
 
         {hoveredComplaintId !== null && position && (
           <div
@@ -939,13 +896,7 @@ export default function DashboardPage() {
       </Card>
 
       {/* Reschedule Modal */}
-      {rescheduleComplaintId && (
-        <RescheduleCalendar
-          complaintId={rescheduleComplaintId}
-          onClose={handleCloseReschedule}
-          onReschedule={fetchComplaints}
-        />
-      )}
+      {rescheduleComplaintId && <RescheduleCalendar complaintId={rescheduleComplaintId} onClose={handleCloseReschedule} onReschedule={fetchComplaints} />}
 
       {/* Calendar & Details */}
       <Card className="bg-white dark:bg-gray-800 p-6">
@@ -971,41 +922,25 @@ export default function DashboardPage() {
             {date && selectedComplaint && selectedComplaint.length > 0 ? (
               <div className="space-y-4">
                 {selectedComplaint.map((complaint) => (
-                  <div
-                    key={complaint.complaint_id}
-                    className="p-6 rounded-lg border border-gray-200 dark:border-gray-700"
-                  >
+                  <div key={complaint.complaint_id} className="p-6 rounded-lg border border-gray-200 dark:border-gray-700">
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="font-semibold text-lg">{complaint.customer_name}</h3>
-                      <Badge className={getSeverityColor(complaint.priority_score)}>
-                        Sentiment: {(complaint.priority_score * 100).toFixed(0)}%
-                      </Badge>
+                      <Badge className={getSeverityColor(complaint.priority_score)}>Sentiment: {(complaint.priority_score * 100).toFixed(0)}%</Badge>
                     </div>
-                    <p className="text-base text-gray-600 dark:text-gray-400 mb-4">
-                      {complaint.complaint_description}
-                    </p>
+                    <p className="text-base text-gray-600 dark:text-gray-400 mb-4">{complaint.complaint_description}</p>
                     <div className="flex justify-between items-center">
                       <p className="text-base">
-                        <strong>Call Scheduled:</strong>{" "}
-                        {complaint.scheduled_callback
-                          ? formatToISTWithTime(complaint.scheduled_callback)
-                          : "Not Scheduled"}
+                        <strong>Call Scheduled:</strong> {complaint.scheduled_callback ? formatToISTWithTime(complaint.scheduled_callback) : "Not Scheduled"}
                       </p>
                       <Badge className={getPriorityColor(complaint.priority_score)}>
-                        {complaint.priority_score >= 0.7
-                          ? "High Priority"
-                          : complaint.priority_score >= 0.4
-                          ? "Medium Priority"
-                          : "Low Priority"}
+                        {complaint.priority_score >= 0.7 ? "High Priority" : complaint.priority_score >= 0.4 ? "Medium Priority" : "Low Priority"}
                       </Badge>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 dark:text-gray-400">
-                {date ? "No complaints found for this date" : "Select a date to view complaint details"}
-              </p>
+              <p className="text-gray-500 dark:text-gray-400">{date ? "No complaints found for this date" : "Select a date to view complaint details"}</p>
             )}
           </div>
         </div>
