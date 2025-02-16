@@ -526,7 +526,6 @@ const ComplaintsDashboardCharts: React.FC = () => {
               <strong>Categories: </strong>
               {categoriesData.map((item, idx) => (
                 <div key={idx}>
-                  {/* Provide fallback for `item.category` */}
                   <TruncatedText text={item.category || ""} limit={40} /> - {item.count}
                 </div>
               ))}
@@ -709,7 +708,7 @@ export default function DashboardPage() {
   const resolvedComplaints = complaints.filter((c) => c.status === "resolved").length;
   const unresolvedComplaints = totalComplaints - resolvedComplaints;
 
-  // Domain filter for admin only
+  // If user is admin, show domain filter above the table
   const renderDomainFilter = () => {
     if (userRole !== "admin") return null;
     return (
@@ -774,15 +773,17 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Admin Domain Filter */}
-      {renderDomainFilter()}
+      {/* If user is employee, do not show charts. Otherwise, show them */}
+      {userRole !== "employee" && (
+        <Card className="mb-8 bg-white dark:bg-gray-800">
+          <CardContent>
+            <ComplaintsDashboardCharts />
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Charts Section */}
-      <Card className="mb-8 bg-white dark:bg-gray-800">
-        <CardContent>
-          <ComplaintsDashboardCharts />
-        </CardContent>
-      </Card>
+      {/* Domain Filter (only if admin) - Moved above table */}
+      {renderDomainFilter()}
 
       {/* Complaints Table */}
       <Card className="bg-white dark:bg-gray-800 mb-8">
@@ -790,7 +791,8 @@ export default function DashboardPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Customer</TableHead>
-              <TableHead>Category</TableHead>
+              {/* Hide "Category" column if user is employee */}
+              {userRole !== "employee" && <TableHead>Category</TableHead>}
               <TableHead>Phone Number</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Created</TableHead>
@@ -806,7 +808,12 @@ export default function DashboardPage() {
             {complaints.map((complaint) => (
               <TableRow key={complaint.complaint_id}>
                 <TableCell className="font-medium">{complaint.customer_name}</TableCell>
-                <TableCell className="font-medium">{complaint.complaint_category}</TableCell>
+
+                {/* Only show category if user is admin */}
+                {userRole !== "employee" ? (
+                  <TableCell className="font-medium">{complaint.complaint_category}</TableCell>
+                ) : null}
+
                 <TableCell className="font-medium">{complaint.customer_phone_number}</TableCell>
                 <TableCell>{complaint.complaint_description}</TableCell>
                 <TableCell className="whitespace-nowrap">{formatToIST(complaint.created_at)}</TableCell>
@@ -868,7 +875,9 @@ export default function DashboardPage() {
                   )}
                 </TableCell>
                 <TableCell>
-                  <div className={`flex gap-2 ${complaint.status === "resolved" ? "" : "justify-end"}`}>
+                  <div
+                    className={`flex gap-2 ${complaint.status === "resolved" ? "" : "justify-end"}`}
+                  >
                     {complaint.status === "resolved" ? (
                       <div
                         className="group relative self-center ml-3"
