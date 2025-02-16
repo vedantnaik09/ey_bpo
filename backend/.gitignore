@@ -1,0 +1,11 @@
+.env.local
+venv/
+.DS_Store
+
+__pycache__/
+
+STORAGE/
+
+.env
+
+serviceAccountKey.json
