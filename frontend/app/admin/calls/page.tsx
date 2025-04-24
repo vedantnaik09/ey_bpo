@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, SetStateAction } from "react"
 import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import {
@@ -15,6 +15,8 @@ import axiosManagerInstance from "@/utils/axiosManager"
 import { onAuthStateChanged } from "firebase/auth"
 import { auth } from "@/firebase/config"
 import { Loader2 } from "lucide-react"
+import DatePicker from "react-datepicker"
+import "react-datepicker/dist/react-datepicker.css"
 
 // Adjust this interface to match what /transcripts actually returns:
 interface Transcript {
@@ -28,6 +30,9 @@ export default function CallsPage() {
   const { push } = useRouter()
   const [transcripts, setTranscripts] = useState<Transcript[]>([])
   const [loading, setLoading] = useState(true)
+  const [startDate, setStartDate] = useState<Date | null>(null)
+  const [endDate, setEndDate] = useState<Date | null>(null)
+  const [filteredTranscripts, setFilteredTranscripts] = useState<Transcript[]>([])
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -70,6 +75,20 @@ export default function CallsPage() {
     }
   }
 
+  useEffect(() => {
+    if (!transcripts.length) return
+    
+    const filtered = transcripts.filter((transcript) => {
+      const transcriptDate = new Date(transcript.called_at)
+      if (startDate && endDate) {
+        return transcriptDate >= startDate && transcriptDate <= endDate
+      }
+      return true
+    })
+    
+    setFilteredTranscripts(filtered)
+  }, [transcripts, startDate, endDate])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50/50 dark:bg-gray-900/50 pt-24 px-8 pb-8">
@@ -83,9 +102,32 @@ export default function CallsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50/50 dark:bg-gray-900/50 pt-24 px-8 pb-8">
-      <h1 className="text-3xl font-bold mb-6">Call Transcripts</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Call Transcripts</h1>
+        <div className="flex gap-4 items-center">
+          <DatePicker
+            selected={startDate}
+            onChange={(date: SetStateAction<Date | null>) => setStartDate(date)}
+            selectsStart
+            startDate={startDate}
+            endDate={endDate}
+            placeholderText="Start Date"
+            className="px-3 py-2 border rounded-md bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          <DatePicker
+            selected={endDate}
+            onChange={(date: SetStateAction<Date | null>) => setEndDate(date)}
+            selectsEnd
+            startDate={startDate}
+            endDate={endDate}
+            minDate={startDate!}
+            placeholderText="End Date"
+            className="px-3 py-2 border rounded-md bg-gray-800 text-white border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+      </div>
       <div className="space-y-4">
-        {transcripts.map((t) => (
+        {filteredTranscripts.map((t) => (
           <Card key={t.id} className="p-4">
             <Accordion type="single" collapsible>
               <AccordionItem value={String(t.id)}>

@@ -21,11 +21,12 @@ import { Badge } from "@/components/ui/badge";
 // ==========================
 // Chart.js & React Chart Imports
 // ==========================
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Tooltip as ChartTooltip, Legend, Title } from "chart.js";
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Tooltip as ChartTooltip, Legend, Title, TimeScale } from "chart.js";
 import { Line, Pie, Doughnut, Bubble, Scatter } from "react-chartjs-2";
 import "chartjs-chart-box-and-violin-plot";
+import 'chartjs-adapter-date-fns';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ArcElement, ChartTooltip, Legend, Title);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, ArcElement, ChartTooltip, Legend, Title, TimeScale);
 
 const CHART_HEIGHT = "300px";
 
@@ -91,6 +92,8 @@ interface ResolutionData {
 interface PriorityData {
   priority_score: number;
   scheduling_time: number;
+  created_at: string;
+  scheduled_callback: string | null;
 }
 
 interface StatusData {
@@ -349,9 +352,8 @@ const ComplaintsDashboardCharts: React.FC = () => {
       label: `Record ${index + 1}`,
       data: [
         {
-          x: item.past_count,
+          x: Math.round(item.past_count),
           y: item.priority_score,
-          r: item.priority_score * 12,
         },
       ],
       backgroundColor: "rgba(255, 159, 64, 0.7)",
@@ -368,8 +370,11 @@ const ComplaintsDashboardCharts: React.FC = () => {
       tooltip: {
         callbacks: {
           label: (context: any) => {
-            const { x, y, r } = context.raw;
-            return `Past: ${x}, Urgency: ${y.toFixed(2)} (Size: ${r})`;
+            const { x, y } = context.raw;
+            return [
+              `Past Complaints: ${x}`,
+              `Urgency Score: ${y.toFixed(2)}`
+            ];
           },
         },
       },
@@ -386,6 +391,14 @@ const ComplaintsDashboardCharts: React.FC = () => {
       x: {
         title: { display: true, text: "Past Complaints" },
         grid: { color: "rgba(200,200,200,0.2)" },
+        ticks: {
+          stepSize: 1,
+          callback: function(value: string | number) {
+            return Math.round(Number(value));
+          }
+        },
+        min: 0,
+        suggestedMax: Math.max(...pastVsUrgencyData.map(d => Math.ceil(d.past_count)))
       },
       y: {
         title: { display: true, text: "Urgency Score" },
@@ -400,12 +413,18 @@ const ComplaintsDashboardCharts: React.FC = () => {
   const scatterChartData = {
     datasets: [
       {
-        label: "Priority vs Scheduling Time",
+        label: "Priority vs Resolution Time",
         data: priorityData.map((item: PriorityData) => ({
-          x: item.priority_score,
-          y: item.scheduling_time,
+          x: new Date(item.created_at).getTime(),
+          y: item.scheduled_callback ? new Date(item.scheduled_callback).getTime() : null,
+          priority: item.priority_score
         })),
-        backgroundColor: "rgba(54, 162, 235, 0.7)",
+        backgroundColor: (context: any) => {
+          const priority = context.raw?.priority || 0;
+          if (priority >= 0.7) return "rgba(239, 68, 68, 0.7)"; // red
+          if (priority >= 0.4) return "rgba(234, 179, 8, 0.7)"; // yellow
+          return "rgba(34, 197, 94, 0.7)"; // green
+        },
         borderColor: "rgba(54, 162, 235, 1)",
         pointRadius: 6,
         pointHoverRadius: 8,
@@ -420,8 +439,14 @@ const ComplaintsDashboardCharts: React.FC = () => {
       tooltip: {
         callbacks: {
           label: (context: any) => {
-            const { x, y } = context.raw;
-            return `Priority: ${x.toFixed(2)}, Scheduling: ${y.toFixed(2)} days`;
+            const priority = context.raw.priority;
+            const createdDate = new Date(context.raw.x).toLocaleString();
+            const scheduledDate = new Date(context.raw.y).toLocaleString();
+            return [
+              `Priority Score: ${priority.toFixed(2)}`,
+              `Created: ${createdDate}`,
+              `Scheduled: ${scheduledDate}`
+            ];
           },
         },
       },
@@ -430,19 +455,37 @@ const ComplaintsDashboardCharts: React.FC = () => {
       },
       title: {
         display: true,
-        text: "Priority Score vs Resolution Speed",
+        text: "Priority Score Timeline",
         font: { size: 16 },
       },
     },
     scales: {
       x: {
-        title: { display: true, text: "Priority Score" },
+        type: 'time' as const,
+        time: {
+          unit: 'day' as const,
+          displayFormats: {
+            day: 'MMM d'
+          }
+        },
+        title: { 
+          display: true, 
+          text: "Creation Date" 
+        },
         grid: { color: "rgba(200,200,200,0.2)" },
-        min: 0,
-        max: 1,
       },
       y: {
-        title: { display: true, text: "Scheduling/Resolution Time (hours)" },
+        type: 'time' as const,
+        time: {
+          unit: 'day' as const,
+          displayFormats: {
+            day: 'MMM d'
+          }
+        },
+        title: { 
+          display: true, 
+          text: "Scheduled Date" 
+        },
         grid: { color: "rgba(200,200,200,0.2)" },
       },
     },
@@ -552,7 +595,6 @@ export default function DashboardPage() {
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
   const [selectedDomain, setSelectedDomain] = useState<string>("all");
   const [userRole, setUserRole] = useState<string>("");
-  const [userDomain, setUserDomain] = useState<string>("");
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
   // On mount, check auth
@@ -569,7 +611,6 @@ export default function DashboardPage() {
         const role = localStorage.getItem("userRole");
         const domain = localStorage.getItem("userDomain");
         setUserRole(role || "");
-        setUserDomain(domain || "");
 
         // If employee, limit domain
         if (role === "employee" && domain) {
@@ -597,14 +638,13 @@ export default function DashboardPage() {
 
   // Also handle localStorage changes (just in case)
   useEffect(() => {
-    const role = localStorage.getItem("userRole");
-    const domain = localStorage.getItem("userDomain");
-    setUserRole(role || "");
-    setUserDomain(domain || "");
-    if (role === "employee" && domain) {
-      setSelectedDomain(domain);
-    }
-  }, []);
+  const role = localStorage.getItem("userRole");
+  const domain = localStorage.getItem("userDomain");
+  setUserRole(role || "");
+  if (role === "employee" && domain) {
+    setSelectedDomain(domain);
+  }
+}, []);
 
   // If we have new complaints, pick today's
   useEffect(() => {
@@ -811,7 +851,7 @@ export default function DashboardPage() {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  {complaint.status === "resolved" ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />}
+                  {complaint.status}
                 </TableCell>
                 <TableCell>
                   {complaint.past_count > 1 ? (

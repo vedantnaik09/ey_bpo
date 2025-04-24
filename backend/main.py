@@ -256,7 +256,7 @@ async def health_db():
 class UserResponse(BaseModel):
     user_id: str  # for UUID
     email: str
-    full_name: Optional[str] = None  # if not stored
+    # full_name: Optional[str] = None  # if not stored
     role: str
     domain: str
 
@@ -460,7 +460,9 @@ class PastUrgencyResponse(BaseModel):
 
 class PriorityResolutionResponse(BaseModel):
     priority_score: float
-    scheduling_time: Optional[float]  # in hours
+ # in hours
+    created_at: datetime
+    scheduled_callback: datetime
 
 @app.get("/complaints/trends")
 def get_complaint_trends():

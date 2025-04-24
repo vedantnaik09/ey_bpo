@@ -495,7 +495,7 @@ class DatabaseManager:
                 if not existing:
                     # Insert new user
                     cursor.execute("""
-                        INSERT INTO users (user_id, email, role, full_name)
+                        INSERT INTO users (user_id, email, role)
                         VALUES (uuid_generate_v4(), %s, %s, %s)
                         RETURNING user_id
                     """, (email, role, full_name))
@@ -530,7 +530,6 @@ class DatabaseManager:
                     SELECT 
                         user_id::text,
                         email,
-                        full_name,
                         role,
                         domain
                     FROM users
@@ -839,27 +838,26 @@ class DatabaseManager:
             conn.close()
             
     def get_priority_vs_resolution_speed(self) -> List[Dict]:
-        """Fetches priority score vs resolution speed (time difference in hours)."""
-        conn = self.connect()
-        if not conn:
-            return []
+            """Fetches priority score vs resolution speed (time difference in hours)."""
+            conn = self.connect()
+            if not conn:
+                return []
 
-        try:
-            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-                cursor.execute("""
-                    SELECT 
-                        priority_score, 
-                        EXTRACT(EPOCH FROM (scheduled_callback - created_at)) / 3600 AS scheduling_time 
-                    FROM complaints
-                    WHERE scheduled_callback IS NOT NULL ;
-                """)
-                results = cursor.fetchall()
-                return results if results else []
-        except Exception as e:
-            print(f"Error fetching priority vs resolution speed: {e}")
-            return []
-        finally:
-            conn.close()
+            try:
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute("""
+                        SELECT 
+                            priority_score, created_at,scheduled_callback 
+                        FROM complaints
+                        WHERE scheduled_callback IS NOT NULL ;
+                    """)
+                    results = cursor.fetchall()
+                    return results if results else []
+            except Exception as e:
+                print(f"Error fetching priority vs resolution speed: {e}")
+                return []
+            finally:
+                conn.close()
             
     def get_transcripts(self) -> Optional[List[Dict[str, any]]]:
         """

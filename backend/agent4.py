@@ -74,13 +74,20 @@ class DatabaseManager:
                 conn.close()  # Ensure connection is closed
         return {"name": "Unknown", "complaint": "Connection failed", "time": "Unknown"}
         
-    def update_complaint_status(self, phone_number: str, status: str,complaint_description:str):
+    def update_complaint_status(self, phone_number: str, status: str):
         """Update the complaint status from 'pending' to 'resolved'."""
-        cursor = self.connect()
-        query = sql.SQL("UPDATE complaints SET status = %s WHERE customer_phone_number = %s and complaint_description = %s")
-        cursor.execute(query, (status, phone_number,complaint_description))
-        self.connection.commit()
-        logger.info(f"Complaint status for {phone_number} updated to {status}")
+        conn= self.connect()
+        if conn:
+            try:
+                with conn.cursor() as cursor:
+                 query = sql.SQL("UPDATE complaints SET status = %s WHERE customer_phone_number = %s ")
+                
+                 cursor.execute(query, (status, phone_number))
+                 conn.commit()
+            except Exception as e:
+                print(f"Error updating complaint status for {phone_number}: {e}")
+            
+            logger.info(f"Complaint status for {phone_number} updated to {status}")
 
     def close(self):
         """Close the database connection."""
@@ -110,7 +117,7 @@ db_manager = DatabaseManager()
 
 # load environment variables, this is optional, only used for local development
 load_dotenv(dotenv_path=".env.local")
-os.environ["OPENAI_API_KEY"]="ENTER YOUR OPENAI API KEY"
+os.environ["OPENAI_API_KEY"]="Put openai key"
 
 logger = logging.getLogger("outbound-caller")
 logger.setLevel(logging.INFO)
@@ -142,7 +149,15 @@ async def entrypoint(ctx: JobContext):
         "You can look into knowledge base to find solution for the user's queries"
         f"before ending the call do save the entire conversation in the database"
         f"also send whatsapp message of the complaint or enquiry details at the end"
+        f"Also change the status of the complaint if the complaint has been resolved or if the user wants human assistance instead of AI"
         f"do end the call automatically using end_call function at the end when the conversation has been logged"
+        """This are the tasks u have to do sequentially
+        1. Check for knowledge base for user queries if you dont know about it 
+        2. Change the update to 1. resolved if u have resolved the complained 2.Human Assistance if the user needs human assistance or keep unchanged if the complaint is still unresolved before ending the call
+        3.Send Whatsapp message of the confirmation of the complaint and complaint details before ending the call
+        4.Log the conversation into the database before ending the call(VERY IMPORTANT)
+        5.End the call if you feel user wants to end the call
+        MAKE SURE TO FOLLOW THIS SEQUENCE OF FUNCTION CALLING """
         
     )
 
@@ -195,13 +210,14 @@ class CallActions(llm.FunctionContext):
     """
 
     def __init__(
-        self, *, api: api.LiveKitAPI, participant: rtc.RemoteParticipant, room: rtc.Room
+        self, *, api: api.LiveKitAPI, participant: rtc.RemoteParticipant, room: rtc.Room,phone_number
     ):
         super().__init__()
 
         self.api = api
         self.participant = participant
         self.room = room
+        self.phone_number=phone_number
 
     async def hangup(self):
         try:
@@ -229,24 +245,25 @@ class CallActions(llm.FunctionContext):
             logger.error(f"Database error: {str(e)}")
             return False
             
-    # @llm.ai_callable()
-    # async def resolve_complaint(self, complaint: Annotated[str, "Call this function to update the status of the complaint of the user "]):
-    #     """Called to resolve a user's complaint by providing relevant information."""
-    #     phone_number = self.participant.identity 
-    #     complaint_details=db_manager.get_complaint_details(phone_number)
-    #     complaint_description=complaint_details['complaint']
-    #     logger.info(f"Resolving complaint for {self.participant.identity}: {complaint}")
+    @llm.ai_callable()
+    async def change_status(self, status: Annotated[str, """The status can be a flag u want to give to the complaint it can be 1.Resolved if u have succesfully resolved the issue
+                                                    2.Human Assistance if the complaint needs human assistance and cant be resolved by AI alone. By default the status is pending u can also leave it in pending """]):
+        """Call this function to change the status of complaint """
+        phone_number = self.phone_number
+        complaint_details=db_manager.get_complaint_details(phone_number)
+        complaint_description=complaint_details['complaint']
+        logger.info(f"Resolving complaint for {self.phone_number}")
         
-    #     # Update the complaint status in the database to "resolved"
-    #      # Assuming the participant identity is the phone number
-    #     db_manager.update_complaint_status(phone_number, "resolved",complaint_description)
+        # Update the complaint status in the database to "resolved"
+         # Assuming the participant identity is the phone number
+        db_manager.update_complaint_status(phone_number, status)
         
-    #     return "Your complaint has been noted. We will resolve it promptly."
+        return "Your complaint has been noted. We will resolve it promptly."
 
     @llm.ai_callable()
     async def end_call(self):
         """Called when the user wants to end the call"""
-        logger.info(f"ending the call for {self.participant.identity}")
+        logger.info(f"ending the call for {self.phone_number}")
         await self.hangup()
 
     @llm.ai_callable()
@@ -275,7 +292,7 @@ class CallActions(llm.FunctionContext):
             User: ...|
             Agent:...' """]):
             """Called to permanently save the full conversation transcript before ending the call."""
-            phone_number = self.participant.identity
+            phone_number = self.phone_number
             formatted_transcript = "\n".join(
             [line.strip() for line in conversation_transcription.split("|")]
             )
@@ -299,9 +316,9 @@ class CallActions(llm.FunctionContext):
     @llm.ai_callable()
     async def send_whatsapp(self,confirmation_message:Annotated[str,"Confirmation message that has to be sent to the user regarding the registeration of the complaint"]):
         """Send confirmation message to the user"""
-        logger.info(f"Sending sale details to {self.participant.identity}")
+        logger.info(f"Sending  details to {self.phone_number}")
         print(self.participant.identity)
-        result=send_whatsapp("+917769915068",confirmation_message)
+        result=send_whatsapp(self.phone_number,confirmation_message)
         if result=="success":
             logging.info(f"the details have been sent to {self.participant.identity}")
             return "The details have been sent to {self.participant.identity"
@@ -328,7 +345,7 @@ def run_voice_pipeline_agent(
         llm=openai.LLM(model="gpt-4o-mini"),
         tts=openai.TTS(),
         chat_ctx=initial_ctx,
-        fnc_ctx=CallActions(api=ctx.api, participant=participant, room=ctx.room),
+        fnc_ctx=CallActions(api=ctx.api, participant=participant, room=ctx.room,phone_number=ctx.job.metadata),
     )
 
     agent.start(ctx.room, participant)
